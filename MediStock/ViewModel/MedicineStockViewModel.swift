@@ -1,6 +1,14 @@
 import Foundation
 import Firebase
 
+enum SortOption: String, CaseIterable, Identifiable {
+    case none
+    case name
+    case stock
+
+    var id: String { self.rawValue }
+}
+
 @MainActor
 class MedicineStockViewModel: ObservableObject {
     @Published var medicines: [Medicine] = []
@@ -110,6 +118,25 @@ class MedicineStockViewModel: ObservableObject {
         } catch {
             print("Error adding history: \(error)")
         }
+    }
+
+    func filteredAndSortedMedicines(filterText: String, sortOption: SortOption) -> [Medicine] {
+        var result = medicines
+
+        if !filterText.isEmpty {
+            result = result.filter { $0.name.lowercased().contains(filterText.lowercased()) }
+        }
+
+        switch sortOption {
+        case .name:
+            result.sort { $0.name.lowercased() < $1.name.lowercased() }
+        case .stock:
+            result.sort { $0.stock < $1.stock }
+        case .none:
+            break
+        }
+
+        return result
     }
 
     func fetchHistory(for medicine: Medicine) {

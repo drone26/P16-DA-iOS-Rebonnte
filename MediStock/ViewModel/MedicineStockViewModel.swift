@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Firebase
 
 enum SortOption: String, CaseIterable, Identifiable {
@@ -9,42 +10,63 @@ enum SortOption: String, CaseIterable, Identifiable {
     var id: String { self.rawValue }
 }
 
+@Observable
 @MainActor
-class MedicineStockViewModel: ObservableObject {
-    @Published var medicines: [Medicine] = []
-    @Published var aisles: [String] = []
-    @Published var history: [HistoryEntry] = []
+final class MedicineStockViewModel {
+    var medicines: [Medicine] = []
+    var history: [HistoryEntry] = []
     private let db = Firestore.firestore()
 
+    private nonisolated(unsafe) var medicinesListener: ListenerRegistration?
+
+    var aisles: [String] {
+        Array(Set(medicines.map { $0.aisle })).sorted()
+    }
+
     func fetchMedicines() {
-        db.collection("medicines").addSnapshotListener { (querySnapshot, error) in
-            if let error = error {
+        guard medicinesListener == nil else { return }
+        medicinesListener = db.collection("medicines").addSnapshotListener { [weak self] querySnapshot, error in
+            guard let self else { return }
+            if let error {
                 print("Error getting documents: \(error)")
-            } else {
-                self.medicines = querySnapshot?.documents.compactMap { document in
-                    try? document.data(as: Medicine.self)
-                } ?? []
+                return
+            }
+            self.medicines = querySnapshot?.documents.compactMap { document in
+                try? document.data(as: Medicine.self)
+            } ?? []
+        }
+    }
+
+    func fetchHistory(for medicine: Medicine) {
+        guard let medicineId = medicine.id else { return }
+        let db = self.db
+        Task { [weak self] in
+            do {
+                let snapshot = try await db.collection("history")
+                    .whereField("medicineId", isEqualTo: medicineId)
+                    .getDocuments()
+                self?.history = snapshot.documents.compactMap { document in
+                    try? document.data(as: HistoryEntry.self)
+                }
+            } catch {
+                print("Error getting history: \(error)")
             }
         }
     }
 
-    func fetchAisles() {
-        db.collection("medicines").addSnapshotListener { (querySnapshot, error) in
-            if let error = error {
-                print("Error getting documents: \(error)")
-            } else {
-                let allMedicines = querySnapshot?.documents.compactMap { document in
-                    try? document.data(as: Medicine.self)
-                } ?? []
-                self.aisles = Array(Set(allMedicines.map { $0.aisle })).sorted()
-            }
-        }
+    func stopListening() {
+        medicinesListener?.remove()
+        medicinesListener = nil
+    }
+
+    deinit {
+        medicinesListener?.remove()
     }
 
     func addRandomMedicine(user: String) {
         let medicine = Medicine(name: "Medicine \(Int.random(in: 1...100))", stock: Int.random(in: 1...100), aisle: "Aisle \(Int.random(in: 1...10))")
         let db = self.db
-        Task.detached {
+        Task {
             do {
                 try db.collection("medicines").document(medicine.id ?? UUID().uuidString).setData(from: medicine)
                 await Self.addHistory(db: db, action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
@@ -57,7 +79,7 @@ class MedicineStockViewModel: ObservableObject {
     func deleteMedicines(at offsets: IndexSet) {
         let medicinesToDelete = offsets.map { medicines[$0] }
         let db = self.db
-        Task.detached {
+        Task {
             for medicine in medicinesToDelete {
                 guard let id = medicine.id else { continue }
                 do {
@@ -81,11 +103,12 @@ class MedicineStockViewModel: ObservableObject {
         guard let id = medicine.id else { return }
         let newStock = medicine.stock + amount
         let db = self.db
-        Task.detached { [weak self] in
+        Task { [weak self] in
             do {
                 try await db.collection("medicines").document(id).updateData(["stock": newStock])
-                await self?.applyStockUpdate(id: id, newStock: newStock)
+                self?.applyStockUpdate(id: id, newStock: newStock)
                 await Self.addHistory(db: db, action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
+                self?.fetchHistory(for: medicine)
             } catch {
                 print("Error updating stock: \(error)")
             }
@@ -101,10 +124,11 @@ class MedicineStockViewModel: ObservableObject {
     func updateMedicine(_ medicine: Medicine, user: String) {
         guard let id = medicine.id else { return }
         let db = self.db
-        Task.detached {
+        Task { [weak self] in
             do {
                 try db.collection("medicines").document(id).setData(from: medicine)
                 await Self.addHistory(db: db, action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
+                self?.fetchHistory(for: medicine)
             } catch {
                 print("Error updating document: \(error)")
             }
@@ -137,18 +161,5 @@ class MedicineStockViewModel: ObservableObject {
         }
 
         return result
-    }
-
-    func fetchHistory(for medicine: Medicine) {
-        guard let medicineId = medicine.id else { return }
-        db.collection("history").whereField("medicineId", isEqualTo: medicineId).addSnapshotListener { (querySnapshot, error) in
-            if let error = error {
-                print("Error getting history: \(error)")
-            } else {
-                self.history = querySnapshot?.documents.compactMap { document in
-                    try? document.data(as: HistoryEntry.self)
-                } ?? []
-            }
-        }
     }
 }

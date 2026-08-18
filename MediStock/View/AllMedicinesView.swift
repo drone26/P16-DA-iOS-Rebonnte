@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AllMedicinesView: View {
-    @ObservedObject var viewModel = MedicineStockViewModel()
+    let viewModel: MedicineStockViewModel
     @State private var filterText: String = ""
     @State private var sortOption: SortOption = .none
 
@@ -47,9 +47,6 @@ struct AllMedicinesView: View {
                 })
             }
         }
-        .onAppear {
-            viewModel.fetchMedicines()
-        }
     }
 
     var filteredAndSortedMedicines: [Medicine] {
@@ -57,8 +54,6 @@ struct AllMedicinesView: View {
     }
 }
 
-struct AllMedicinesView_Previews: PreviewProvider {
-    static var previews: some View {
-        AllMedicinesView()
-    }
+#Preview {
+    AllMedicinesView(viewModel: MedicineStockViewModel())
 }

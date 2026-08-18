@@ -1,13 +1,18 @@
 import Foundation
+import Observation
 import Firebase
 
-class SessionStore: ObservableObject {
-    @Published var session: User?
-    var handle: AuthStateDidChangeListenerHandle?
+@Observable
+@MainActor
+final class SessionStore {
+    var session: User?
+    private nonisolated(unsafe) var handle: AuthStateDidChangeListenerHandle?
 
     func listen() {
-        handle = Auth.auth().addStateDidChangeListener { (auth, user) in
-            if let user = user {
+        guard handle == nil else { return }
+        handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            guard let self else { return }
+            if let user {
                 self.session = User(uid: user.uid, email: user.email)
             } else {
                 self.session = nil
@@ -16,9 +21,10 @@ class SessionStore: ObservableObject {
     }
 
     func signUp(email: String, password: String) {
-        Auth.auth().createUser(withEmail: email, password: password) { (result, error) in
-            if let error = error {
-                print("Error creating user: \(error.localizedDescription) \(error)")
+        Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
+            guard let self else { return }
+            if let error {
+                print("Error creating user: \(error.localizedDescription)")
             } else {
                 self.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
             }
@@ -26,8 +32,9 @@ class SessionStore: ObservableObject {
     }
 
     func signIn(email: String, password: String) {
-        Auth.auth().signIn(withEmail: email, password: password) { (result, error) in
-            if let error = error {
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
+            guard let self else { return }
+            if let error {
                 print("Error signing in: \(error.localizedDescription)")
             } else {
                 self.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
@@ -38,14 +45,21 @@ class SessionStore: ObservableObject {
     func signOut() {
         do {
             try Auth.auth().signOut()
-            self.session = nil
-        } catch let error {
+            session = nil
+        } catch {
             print("Error signing out: \(error.localizedDescription)")
         }
     }
 
     func unbind() {
-        if let handle = handle {
+        if let handle {
+            Auth.auth().removeStateDidChangeListener(handle)
+            self.handle = nil
+        }
+    }
+
+    deinit {
+        if let handle {
             Auth.auth().removeStateDidChangeListener(handle)
         }
     }

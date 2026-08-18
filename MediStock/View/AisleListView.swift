@@ -11,7 +11,7 @@ struct AisleListView: View {
     let viewModel: MedicineStockViewModel
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 ForEach(viewModel.aisles, id: \.self) { aisle in
                     NavigationLink(destination: MedicineListView(aisle: aisle, viewModel: viewModel)) {

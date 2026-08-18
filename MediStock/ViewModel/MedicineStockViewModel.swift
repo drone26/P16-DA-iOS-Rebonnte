@@ -26,12 +26,31 @@ final class MedicineStockViewModel {
     var history: [HistoryEntry] = []
     private let db = Firestore.firestore()
 
+    /// Number of documents fetched per page when lazy-loading a list.
+    private let pageSize = 20
+
+    var isLoadingMoreFilteredMedicines = false
+    var hasMoreFilteredMedicines = true
+    var isLoadingMoreAisleMedicines = false
+    var hasMoreAisleMedicines = true
+
     @ObservationIgnored
     private nonisolated(unsafe) var medicinesListener: ListenerRegistration?
     @ObservationIgnored
     private nonisolated(unsafe) var filteredMedicinesListener: ListenerRegistration?
     @ObservationIgnored
     private nonisolated(unsafe) var aisleMedicinesListener: ListenerRegistration?
+
+    @ObservationIgnored
+    private var currentFilterText = ""
+    @ObservationIgnored
+    private var currentSortOption: SortOption = .none
+    @ObservationIgnored
+    private var filteredMedicinesLimit = 0
+    @ObservationIgnored
+    private var currentAisle = ""
+    @ObservationIgnored
+    private var aisleMedicinesLimit = 0
 
     var aisles: [String] {
         Array(Set(medicines.map { $0.aisle })).sorted()
@@ -78,32 +97,49 @@ final class MedicineStockViewModel {
     /// leading prefix. Combining `arrayContains` with `order(by:)` on a different field
     /// needs a Firestore composite index, so when a filter is active, sorting is applied
     /// locally to the already server-filtered (small) result instead.
+    ///
+    /// Only the first `pageSize` results are loaded initially; call
+    /// `loadMoreFilteredMedicinesIfNeeded(currentItem:)` as the user scrolls to lazily
+    /// widen the query instead of fetching the whole collection up front.
     func fetchFilteredAndSortedMedicines(filterText: String, sortOption: SortOption) {
-        filteredMedicinesListener?.remove()
+        currentFilterText = filterText
+        currentSortOption = sortOption
+        filteredMedicinesLimit = pageSize
+        hasMoreFilteredMedicines = true
+        runFilteredMedicinesQuery()
+    }
 
-        let trimmedFilter = filterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    /// Call from the list row's `onAppear`; widens the page once the user scrolls near
+    /// the end of the currently loaded results.
+    func loadMoreFilteredMedicinesIfNeeded(currentItem medicine: Medicine) {
+        guard hasMoreFilteredMedicines, !isLoadingMoreFilteredMedicines,
+              isNearEnd(of: filteredMedicines, item: medicine) else { return }
+
+        isLoadingMoreFilteredMedicines = true
+        filteredMedicinesLimit += pageSize
+        runFilteredMedicinesQuery()
+    }
+
+    private func runFilteredMedicinesQuery() {
+        let trimmedFilter = currentFilterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         var query: Query = db.collection("medicines")
 
         if !trimmedFilter.isEmpty {
             query = query.whereField("nameSubstrings", arrayContains: trimmedFilter)
-        } else if sortOption == .name {
+        } else if currentSortOption == .name {
             query = query.order(by: "name")
-        } else if sortOption == .stock {
+        } else if currentSortOption == .stock {
             query = query.order(by: "stock")
         }
 
-        filteredMedicinesListener = query.addSnapshotListener { [weak self] querySnapshot, error in
+        listenPaginated(query, limit: filteredMedicinesLimit, listener: \.filteredMedicinesListener) { [weak self] medicines, hasMore in
             guard let self else { return }
-            if let error {
-                print("Error getting filtered documents: \(error)")
-                return
-            }
-            var results = querySnapshot?.documents.compactMap { document in
-                try? document.data(as: Medicine.self)
-            } ?? []
+            self.isLoadingMoreFilteredMedicines = false
+            self.hasMoreFilteredMedicines = hasMore
 
+            var results = medicines
             if !trimmedFilter.isEmpty {
-                switch sortOption {
+                switch self.currentSortOption {
                 case .name:
                     results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
                 case .stock:
@@ -118,20 +154,67 @@ final class MedicineStockViewModel {
     }
 
     /// Fetches only the medicines for a given aisle using a Firestore `whereField` query.
+    /// Only the first `pageSize` results are loaded initially; call
+    /// `loadMoreAisleMedicinesIfNeeded(currentItem:)` as the user scrolls to lazily widen
+    /// the query instead of fetching the whole aisle up front.
     func fetchMedicines(inAisle aisle: String) {
-        aisleMedicinesListener?.remove()
-        aisleMedicinesListener = db.collection("medicines")
-            .whereField("aisle", isEqualTo: aisle)
-            .addSnapshotListener { [weak self] querySnapshot, error in
-                guard let self else { return }
-                if let error {
-                    print("Error getting aisle documents: \(error)")
-                    return
-                }
-                self.medicinesInAisle = querySnapshot?.documents.compactMap { document in
-                    try? document.data(as: Medicine.self)
-                } ?? []
+        currentAisle = aisle
+        aisleMedicinesLimit = pageSize
+        hasMoreAisleMedicines = true
+        runAisleMedicinesQuery()
+    }
+
+    /// Call from the list row's `onAppear`; widens the page once the user scrolls near
+    /// the end of the currently loaded results.
+    func loadMoreAisleMedicinesIfNeeded(currentItem medicine: Medicine) {
+        guard hasMoreAisleMedicines, !isLoadingMoreAisleMedicines,
+              isNearEnd(of: medicinesInAisle, item: medicine) else { return }
+
+        isLoadingMoreAisleMedicines = true
+        aisleMedicinesLimit += pageSize
+        runAisleMedicinesQuery()
+    }
+
+    private func runAisleMedicinesQuery() {
+        let query = db.collection("medicines").whereField("aisle", isEqualTo: currentAisle)
+
+        listenPaginated(query, limit: aisleMedicinesLimit, listener: \.aisleMedicinesListener) { [weak self] medicines, hasMore in
+            guard let self else { return }
+            self.isLoadingMoreAisleMedicines = false
+            self.hasMoreAisleMedicines = hasMore
+            self.medicinesInAisle = medicines
+        }
+    }
+
+    /// True once `item` is within `threshold` positions of the end of `items`, i.e. close
+    /// enough to the bottom of the currently loaded page to justify fetching the next one.
+    private func isNearEnd(of items: [Medicine], item: Medicine, threshold: Int = 5) -> Bool {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return false }
+        let thresholdIndex = items.index(items.endIndex, offsetBy: -threshold, limitedBy: items.startIndex) ?? items.startIndex
+        return index >= thresholdIndex
+    }
+
+    /// Runs `query` limited to `limit`, replacing whichever listener `listener` points to,
+    /// and reports the decoded page plus whether a full page came back (i.e. there may be
+    /// more). Shared by the filtered and aisle-scoped queries so they don't each duplicate
+    /// listener teardown/decoding.
+    private func listenPaginated(
+        _ query: Query,
+        limit: Int,
+        listener: ReferenceWritableKeyPath<MedicineStockViewModel, ListenerRegistration?>,
+        onUpdate: @escaping (_ medicines: [Medicine], _ hasMore: Bool) -> Void
+    ) {
+        self[keyPath: listener]?.remove()
+        self[keyPath: listener] = query.limit(to: limit).addSnapshotListener { [weak self] querySnapshot, error in
+            guard self != nil else { return }
+            if let error {
+                print("Error getting documents: \(error)")
+                return
             }
+            let documents = querySnapshot?.documents ?? []
+            let medicines = documents.compactMap { try? $0.data(as: Medicine.self) }
+            onUpdate(medicines, documents.count >= limit)
+        }
     }
 
     func fetchHistory(for medicine: Medicine) {

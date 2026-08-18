@@ -12,18 +12,11 @@ struct MedicineListView: View {
     let viewModel: MedicineStockViewModel
 
     var body: some View {
-        List {
-            ForEach(viewModel.medicinesInAisle, id: \.id) { medicine in
-                NavigationLink(value: medicine) {
-                    VStack(alignment: .leading) {
-                        Text(medicine.name)
-                            .font(.headline)
-                        Text("Stock: \(medicine.stock)")
-                            .font(.subheadline)
-                    }
-                }
-            }
-        }
+        PaginatedMedicineList(
+            medicines: viewModel.medicinesInAisle,
+            isLoadingMore: viewModel.isLoadingMoreAisleMedicines,
+            onRowAppear: { viewModel.loadMoreAisleMedicinesIfNeeded(currentItem: $0) }
+        )
         // See AllMedicinesView: resolving the destination from the pushed value (not a
         // live lookup in medicinesInAisle) keeps the detail view up when editing the
         // medicine's aisle removes it from this aisle-filtered list.

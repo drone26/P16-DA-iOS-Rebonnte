@@ -13,6 +13,7 @@ import Firebase
 @MainActor
 final class SessionStore {
     var session: User?
+    var errorMessage: String?
     @ObservationIgnored
     private nonisolated(unsafe) var handle: AuthStateDidChangeListenerHandle?
 
@@ -30,12 +31,11 @@ final class SessionStore {
 
     func signUp(email: String, password: String) {
         Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
-            if let error {
-                print("Error creating user: \(error.localizedDescription)")
-            } else {
-                let user = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
-                Task { @MainActor in
-                    self?.session = user
+            Task { @MainActor in
+                if let error {
+                    self?.errorMessage = error.localizedDescription
+                } else {
+                    self?.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
                 }
             }
         }
@@ -43,12 +43,11 @@ final class SessionStore {
 
     func signIn(email: String, password: String) {
         Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
-            if let error {
-                print("Error signing in: \(error.localizedDescription)")
-            } else {
-                let user = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
-                Task { @MainActor in
-                    self?.session = user
+            Task { @MainActor in
+                if let error {
+                    self?.errorMessage = error.localizedDescription
+                } else {
+                    self?.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
                 }
             }
         }
@@ -59,7 +58,7 @@ final class SessionStore {
             try Auth.auth().signOut()
             session = nil
         } catch {
-            print("Error signing out: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
     }
 

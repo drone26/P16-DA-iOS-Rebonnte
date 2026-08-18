@@ -1,3 +1,10 @@
+//
+//  AllMedicinesView.swift
+//  MediStock
+//
+//  Created by Mathieu Arrio on 2026/08/18.
+//
+
 import SwiftUI
 
 struct AllMedicinesView: View {
@@ -6,7 +13,7 @@ struct AllMedicinesView: View {
     @State private var sortOption: SortOption = .none
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 // Filtrage et Tri
                 HStack {
@@ -28,8 +35,8 @@ struct AllMedicinesView: View {
                 
                 // Liste des Médicaments
                 List {
-                    ForEach(filteredAndSortedMedicines, id: \.id) { medicine in
-                        NavigationLink(destination: MedicineDetailView(medicine: medicine, viewModel: viewModel)) {
+                    ForEach(viewModel.filteredMedicines, id: \.id) { medicine in
+                        NavigationLink(value: medicine) {
                             VStack(alignment: .leading) {
                                 Text(medicine.name)
                                     .font(.headline)
@@ -39,6 +46,13 @@ struct AllMedicinesView: View {
                         }
                     }
                 }
+                // Destination is resolved from the value captured in the NavigationStack's
+                // path rather than looked up live in `filteredMedicines`, so editing a
+                // medicine's name/aisle while a filter is active (which can remove it from
+                // `filteredMedicines`) no longer pops the detail view back to the list.
+                .navigationDestination(for: Medicine.self) { medicine in
+                    MedicineDetailView(medicine: medicine, viewModel: viewModel)
+                }
                 .navigationBarTitle("All Medicines")
                 .navigationBarItems(trailing: Button(action: {
                     viewModel.addRandomMedicine(user: "test_user") // Remplacez par l'utilisateur actuel
@@ -47,10 +61,15 @@ struct AllMedicinesView: View {
                 })
             }
         }
-    }
-
-    var filteredAndSortedMedicines: [Medicine] {
-        viewModel.filteredAndSortedMedicines(filterText: filterText, sortOption: sortOption)
+        .onAppear {
+            viewModel.fetchFilteredAndSortedMedicines(filterText: filterText, sortOption: sortOption)
+        }
+        .onChange(of: filterText) {
+            viewModel.fetchFilteredAndSortedMedicines(filterText: filterText, sortOption: sortOption)
+        }
+        .onChange(of: sortOption) {
+            viewModel.fetchFilteredAndSortedMedicines(filterText: filterText, sortOption: sortOption)
+        }
     }
 }
 

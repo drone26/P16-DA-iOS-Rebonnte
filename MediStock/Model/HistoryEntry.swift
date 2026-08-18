@@ -1,3 +1,10 @@
+//
+//  HistoryEntry.swift
+//  MediStock
+//
+//  Created by Mathieu Arrio on 2026/08/18.
+//
+
 import Foundation
 import FirebaseFirestoreSwift
 

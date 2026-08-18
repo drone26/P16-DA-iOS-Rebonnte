@@ -3,6 +3,7 @@
 //  MediStock
 //
 //  Created by Vincent Saluzzo on 28/05/2024.
+//  Modified by Mathieu Arrio on 2026/08/18.
 //
 
 import SwiftUI

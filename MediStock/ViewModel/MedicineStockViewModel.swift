@@ -214,12 +214,16 @@ final class MedicineStockViewModel {
         let db = self.db
         Task { [weak self] in
             do {
+                // Sorted client-side rather than via Firestore `order(by:)`: combining it with
+                // the `medicineId` equality filter would need a composite index provisioned
+                // in the Firebase console, and a single medicine's history is small enough
+                // that sorting the fetched page locally is cheap.
                 let snapshot = try await db.collection("history")
                     .whereField("medicineId", isEqualTo: medicineId)
                     .getDocuments()
-                self?.history = snapshot.documents.compactMap { document in
-                    try? document.data(as: HistoryEntry.self)
-                }
+                self?.history = snapshot.documents
+                    .compactMap { document in try? document.data(as: HistoryEntry.self) }
+                    .sorted { $0.timestamp > $1.timestamp }
             } catch {
                 self?.errorMessage = error.localizedDescription
             }
@@ -241,71 +245,80 @@ final class MedicineStockViewModel {
         aisleMedicinesListener?.remove()
     }
 
+    /// Writes the new medicine and its history entry as a single atomic batch so the two
+    /// can never diverge (e.g. the medicine being created but no matching history entry
+    /// existing because the history write failed independently).
     func addRandomMedicine(user: String) {
         let medicine = Medicine(name: "Medicine \(Int.random(in: 1...100))", stock: Int.random(in: 1...100), aisle: "Aisle \(Int.random(in: 1...10))")
         let db = self.db
         Task { [weak self] in
             do {
-                try db.collection("medicines").document(medicine.id ?? UUID().uuidString).setData(from: medicine)
-                try await Self.addHistory(db: db, action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
+                let medicineRef = db.collection("medicines").document(medicine.id ?? UUID().uuidString)
+                let batch = db.batch()
+                try batch.setData(from: medicine, forDocument: medicineRef)
+                try Self.addHistoryEntry(to: batch, db: db, action: "Added \(medicine.name)", user: user, medicineId: medicineRef.documentID, details: "Added new medicine")
+                try await batch.commit()
             } catch {
                 self?.errorMessage = error.localizedDescription
             }
         }
     }
 
-    func deleteMedicines(at offsets: IndexSet) {
+    /// Deletes the selected medicines and records one history entry per deletion, all in a
+    /// single atomic batch so a deletion can never go unrecorded in the history.
+    func deleteMedicines(at offsets: IndexSet, user: String) {
         let medicinesToDelete = offsets.map { medicines[$0] }
         let db = self.db
         Task { [weak self] in
-            for medicine in medicinesToDelete {
-                guard let id = medicine.id else { continue }
-                do {
-                    try await db.collection("medicines").document(id).delete()
-                } catch {
-                    self?.errorMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-
-    func increaseStock(_ medicine: Medicine, user: String) {
-        updateStock(medicine, by: 1, user: user)
-    }
-
-    func decreaseStock(_ medicine: Medicine, user: String) {
-        updateStock(medicine, by: -1, user: user)
-    }
-
-    private func updateStock(_ medicine: Medicine, by amount: Int, user: String) {
-        guard let id = medicine.id else { return }
-        let newStock = medicine.stock + amount
-        let db = self.db
-        Task { [weak self] in
             do {
-                try await db.collection("medicines").document(id).updateData(["stock": newStock])
-                self?.applyStockUpdate(id: id, newStock: newStock)
-                try await Self.addHistory(db: db, action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
-                self?.fetchHistory(for: medicine)
+                let batch = db.batch()
+                for medicine in medicinesToDelete {
+                    guard let id = medicine.id else { continue }
+                    batch.deleteDocument(db.collection("medicines").document(id))
+                    try Self.addHistoryEntry(to: batch, db: db, action: "Deleted \(medicine.name)", user: user, medicineId: id, details: "Deleted medicine")
+                }
+                try await batch.commit()
             } catch {
                 self?.errorMessage = error.localizedDescription
             }
         }
     }
 
-    private func applyStockUpdate(id: String, newStock: Int) {
-        if let index = medicines.firstIndex(where: { $0.id == id }) {
-            medicines[index].stock = newStock
-        }
-    }
-
+    /// Runs the update as a transaction so the history entry can describe exactly which
+    /// fields changed (read from the server's current state, not from whatever the caller's
+    /// local copy happens to hold) instead of a generic "medicine updated" message.
     func updateMedicine(_ medicine: Medicine, user: String) {
         guard let id = medicine.id else { return }
         let db = self.db
+        let medicineRef = db.collection("medicines").document(id)
+        let historyRef = db.collection("history").document()
         Task { [weak self] in
             do {
-                try db.collection("medicines").document(id).setData(from: medicine)
-                try await Self.addHistory(db: db, action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
+                try await db.runTransaction { transaction, errorPointer -> Any? in
+                    let snapshot: DocumentSnapshot
+                    do {
+                        snapshot = try transaction.getDocument(medicineRef)
+                    } catch let fetchError as NSError {
+                        errorPointer?.pointee = fetchError
+                        return nil
+                    }
+                    let previous = try? snapshot.data(as: Medicine.self)
+                    do {
+                        try transaction.setData(from: medicine, forDocument: medicineRef)
+                    } catch let encodeError as NSError {
+                        errorPointer?.pointee = encodeError
+                        return nil
+                    }
+                    let details = previous.map { Self.describeChanges(from: $0, to: medicine) } ?? "Updated medicine details"
+                    let history = HistoryEntry(id: historyRef.documentID, medicineId: id, user: user, action: "Updated \(medicine.name)", details: details)
+                    do {
+                        try transaction.setData(from: history, forDocument: historyRef)
+                    } catch let encodeError as NSError {
+                        errorPointer?.pointee = encodeError
+                        return nil
+                    }
+                    return nil
+                }
                 self?.fetchHistory(for: medicine)
             } catch {
                 self?.errorMessage = error.localizedDescription
@@ -313,8 +326,28 @@ final class MedicineStockViewModel {
         }
     }
 
-    private static func addHistory(db: Firestore, action: String, user: String, medicineId: String, details: String) async throws {
-        let history = HistoryEntry(medicineId: medicineId, user: user, action: action, details: details)
-        try db.collection("history").document(history.id ?? UUID().uuidString).setData(from: history)
+    /// Human-readable, field-by-field description of what changed between two revisions of
+    /// the same medicine, e.g. "Name changed from \"Doliprane\" to \"Dolipranum\"".
+    private static func describeChanges(from previous: Medicine, to updated: Medicine) -> String {
+        var changes: [String] = []
+        if previous.name != updated.name {
+            changes.append("Name changed from \"\(previous.name)\" to \"\(updated.name)\"")
+        }
+        if previous.stock != updated.stock {
+            changes.append("Stock changed from \(previous.stock) to \(updated.stock)")
+        }
+        if previous.aisle != updated.aisle {
+            changes.append("Aisle changed from \"\(previous.aisle)\" to \"\(updated.aisle)\"")
+        }
+        return changes.isEmpty ? "No changes" : changes.joined(separator: "; ")
+    }
+
+    /// Adds a history-entry write to `batch` so it commits atomically alongside the
+    /// medicine write it documents, instead of as an independent Firestore call that could
+    /// succeed or fail on its own and leave the action unrecorded.
+    private static func addHistoryEntry(to batch: WriteBatch, db: Firestore, action: String, user: String, medicineId: String, details: String) throws {
+        let historyRef = db.collection("history").document()
+        let history = HistoryEntry(id: historyRef.documentID, medicineId: medicineId, user: user, action: action, details: details)
+        try batch.setData(from: history, forDocument: historyRef)
     }
 }

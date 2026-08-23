@@ -20,7 +20,7 @@ private struct AddMedicineToolbarButtonModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content.navigationBarItems(trailing: Button(action: {
-            viewModel.addRandomMedicine(user: session.session?.uid ?? "")
+            viewModel.addRandomMedicine(user: session.session?.identifier ?? "")
         }) {
             Image(systemName: "plus")
         })

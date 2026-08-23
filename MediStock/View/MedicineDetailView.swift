@@ -46,25 +46,19 @@ struct MedicineDetailView: View {
 }
 
 extension MedicineDetailView {
+    private func commitUpdate() {
+        viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
+    }
+
     private var medicineNameSection: some View {
-        VStack(alignment: .leading) {
-            Text("Name")
-                .font(.headline)
-                .foregroundColor(Color("PrimaryText"))
-            TextField("Name", text: $medicine.name, onCommit: {
-                viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
-            })
-            .formFieldStyle()
-            .padding(.bottom, 10)
+        LabeledSection(label: "Name") {
+            TextField("Name", text: $medicine.name, onCommit: commitUpdate)
+                .formFieldStyle()
         }
-        .padding(.horizontal)
     }
 
     private var medicineStockSection: some View {
-        VStack(alignment: .leading) {
-            Text("Stock")
-                .font(.headline)
-                .foregroundColor(Color("PrimaryText"))
+        LabeledSection(label: "Stock") {
             HStack {
                 Button(action: {
                     viewModel.decreaseStock(medicine, user: session.session?.uid ?? "")
@@ -73,12 +67,10 @@ extension MedicineDetailView {
                         .font(.title)
                         .foregroundColor(Color("NegativeColor"))
                 }
-                TextField("Stock", value: $medicine.stock, formatter: NumberFormatter(), onCommit: {
-                    viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
-                })
-                .formFieldStyle()
-                .keyboardType(.numberPad)
-                .frame(width: 100)
+                TextField("Stock", value: $medicine.stock, formatter: NumberFormatter(), onCommit: commitUpdate)
+                    .formFieldStyle()
+                    .keyboardType(.numberPad)
+                    .frame(width: 100)
                 Button(action: {
                     viewModel.increaseStock(medicine, user: session.session?.uid ?? "")
                 }) {
@@ -87,50 +79,23 @@ extension MedicineDetailView {
                         .foregroundColor(Color("PositiveColor"))
                 }
             }
-            .padding(.bottom, 10)
         }
-        .padding(.horizontal)
     }
 
     private var medicineAisleSection: some View {
-        VStack(alignment: .leading) {
-            Text("Aisle")
-                .font(.headline)
-                .foregroundColor(Color("PrimaryText"))
-            TextField("Aisle", text: $medicine.aisle, onCommit: {
-                viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
-            })
-            .formFieldStyle()
-            .padding(.bottom, 10)
+        LabeledSection(label: "Aisle") {
+            TextField("Aisle", text: $medicine.aisle, onCommit: commitUpdate)
+                .formFieldStyle()
         }
-        .padding(.horizontal)
     }
 
     private var historySection: some View {
         VStack(alignment: .leading) {
             Text("History")
-                .font(.headline)
-                .foregroundColor(Color("PrimaryText"))
+                .sectionTitleStyle()
                 .padding(.top, 20)
             ForEach(viewModel.history.filter { $0.medicineId == medicine.id }, id: \.id) { entry in
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(entry.action)
-                        .font(.headline)
-                        .foregroundColor(Color("PrimaryText"))
-                    Text("User: \(entry.user)")
-                        .font(.subheadline)
-                        .foregroundColor(Color("SecondaryText"))
-                    Text("Date: \(entry.timestamp.formatted())")
-                        .font(.subheadline)
-                        .foregroundColor(Color("SecondaryText"))
-                    Text("Details: \(entry.details)")
-                        .font(.subheadline)
-                        .foregroundColor(Color("SecondaryText"))
-                }
-                .padding()
-                .background(Color("CardBackground"))
-                .cornerRadius(10)
-                .padding(.bottom, 5)
+                HistoryEntryRow(entry: entry)
             }
         }
         .padding(.horizontal)

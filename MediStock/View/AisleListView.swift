@@ -30,11 +30,7 @@ struct AisleListView: View {
                 MedicineListView(aisle: aisle, viewModel: viewModel)
             }
             .navigationBarTitle("Aisles")
-            .navigationBarItems(trailing: Button(action: {
-                viewModel.addRandomMedicine(user: "test_user") // Remplacez par l'utilisateur actuel
-            }) {
-                Image(systemName: "plus")
-            })
+            .addMedicineToolbarButton(viewModel: viewModel)
         }
     }
 }

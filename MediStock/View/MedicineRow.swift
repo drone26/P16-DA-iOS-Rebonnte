@@ -13,11 +13,9 @@ struct MedicineRow: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text(medicine.name)
-                .font(.headline)
-                .foregroundColor(Color("PrimaryText"))
+                .sectionTitleStyle()
             Text("Stock: \(medicine.stock)")
-                .font(.subheadline)
-                .foregroundColor(Color("SecondaryText"))
+                .sectionSubtitleStyle()
         }
     }
 }

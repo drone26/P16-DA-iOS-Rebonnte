@@ -23,6 +23,12 @@ struct MainTabView: View {
                     Image(systemName: "square.grid.2x2")
                     Text("All Medicines")
                 }
+
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.circle")
+                    Text("Profile")
+                }
         }
         .onAppear {
             viewModel.fetchMedicines()

@@ -42,7 +42,7 @@ struct LoginView: View {
                 .padding(.horizontal)
                 .padding(.top)
             if !password.isEmpty && !isPasswordValid {
-                Text("Password must be at least 6 characters")
+                Text("Password must be at least 20 characters")
                     .sectionSubtitleStyle()
                     .foregroundColor(Color("NegativeColor"))
             }
@@ -50,15 +50,29 @@ struct LoginView: View {
                 session.signIn(email: email, password: password)
             }) {
                 Text("Login")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(canSubmit ? Color("PositiveColor") : Color("SecondaryText"))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
             .disabled(!canSubmit)
+            .padding(.horizontal)
             .padding(.top)
             Button(action: {
                 session.signUp(email: email, password: password)
             }) {
                 Text("Sign Up")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(canSubmit ? Color("PositiveColor") : Color("SecondaryText"))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
             .disabled(!canSubmit)
+            .padding(.horizontal)
         }
         .padding()
         .errorAlert($session.errorMessage)

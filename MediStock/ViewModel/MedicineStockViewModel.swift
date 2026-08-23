@@ -57,6 +57,22 @@ final class MedicineStockViewModel {
         Array(Set(medicines.map { $0.aisle })).sorted()
     }
 
+    func isValidName(_ name: String) -> Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func isValidStock(_ stock: Int) -> Bool {
+        stock >= 0
+    }
+
+    func isValidAisle(_ aisle: String) -> Bool {
+        !aisle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func isValidMedicine(_ medicine: Medicine) -> Bool {
+        isValidName(medicine.name) && isValidStock(medicine.stock) && isValidAisle(medicine.aisle)
+    }
+
     func fetchMedicines() {
         guard medicinesListener == nil else { return }
         medicinesListener = db.collection("medicines").addSnapshotListener { [weak self] querySnapshot, error in
@@ -289,12 +305,16 @@ final class MedicineStockViewModel {
     /// local copy happens to hold) instead of a generic "medicine updated" message.
     func updateMedicine(_ medicine: Medicine, user: String) {
         guard let id = medicine.id else { return }
+        guard isValidMedicine(medicine) else {
+            errorMessage = "Please provide a non-empty name, a non-negative stock, and a non-empty aisle before saving."
+            return
+        }
         let db = self.db
         let medicineRef = db.collection("medicines").document(id)
         let historyRef = db.collection("history").document()
         Task { [weak self] in
             do {
-                try await db.runTransaction { transaction, errorPointer -> Any? in
+                _ = try await db.runTransaction { transaction, errorPointer -> Any? in
                     let snapshot: DocumentSnapshot
                     do {
                         snapshot = try transaction.getDocument(medicineRef)

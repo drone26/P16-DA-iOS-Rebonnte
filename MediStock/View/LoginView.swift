@@ -12,25 +12,53 @@ struct LoginView: View {
     @State private var password = ""
     @Environment(SessionStore.self) var session
 
+    private var isEmailValid: Bool {
+        session.isValidEmail(email)
+    }
+
+    private var isPasswordValid: Bool {
+        session.isValidPassword(password)
+    }
+
+    private var canSubmit: Bool {
+        isEmailValid && isPasswordValid
+    }
+
     var body: some View {
         @Bindable var session = session
         VStack {
             TextField("Email", text: $email)
                 .formFieldStyle()
-                .padding()
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .padding(.horizontal)
+            if !email.isEmpty && !isEmailValid {
+                Text("Enter a valid email address")
+                    .sectionSubtitleStyle()
+                    .foregroundColor(Color("NegativeColor"))
+            }
             SecureField("Password", text: $password)
                 .formFieldStyle()
-                .padding()
+                .padding(.horizontal)
+                .padding(.top)
+            if !password.isEmpty && !isPasswordValid {
+                Text("Password must be at least 6 characters")
+                    .sectionSubtitleStyle()
+                    .foregroundColor(Color("NegativeColor"))
+            }
             Button(action: {
                 session.signIn(email: email, password: password)
             }) {
                 Text("Login")
             }
+            .disabled(!canSubmit)
+            .padding(.top)
             Button(action: {
                 session.signUp(email: email, password: password)
             }) {
                 Text("Sign Up")
             }
+            .disabled(!canSubmit)
         }
         .padding()
         .errorAlert($session.errorMessage)

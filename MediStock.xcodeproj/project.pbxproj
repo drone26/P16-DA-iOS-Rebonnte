@@ -41,6 +41,7 @@
 		B095F22BE1C80E9087BA90A3 /* MedicineRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4010AD2B46C6B2C7A91C33A5 /* MedicineRow.swift */; };
 		E2A42C1DB117F74FDC45AD61 /* PaginatedMedicineList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */; };
 		42A65A378A6047AA95830ECA /* ErrorAlertModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */; };
+		54ABE93F9AE37AF8F7205333 /* FormFieldStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 		3EAEFC33C1384AB6844D6D9E /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		4010AD2B46C6B2C7A91C33A5 /* MedicineRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicineRow.swift; path = MedicineRow.swift; sourceTree = "<group>"; };
 		AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ErrorAlertModifier.swift; path = ErrorAlertModifier.swift; sourceTree = "<group>"; };
+		8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FormFieldStyle.swift; path = FormFieldStyle.swift; sourceTree = "<group>"; };
 		53E0D8932C06084700DE1134 /* MediStock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MediStock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		53E0D8962C06084700DE1134 /* MediStockApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediStockApp.swift; sourceTree = "<group>"; };
 		53E0D8982C06084700DE1134 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 				4010AD2B46C6B2C7A91C33A5 /* MedicineRow.swift */,
 				FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */,
 				AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */,
+				8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -393,6 +396,7 @@
 				B095F22BE1C80E9087BA90A3 /* MedicineRow.swift in Sources */,
 				E2A42C1DB117F74FDC45AD61 /* PaginatedMedicineList.swift in Sources */,
 				42A65A378A6047AA95830ECA /* ErrorAlertModifier.swift in Sources */,
+				54ABE93F9AE37AF8F7205333 /* FormFieldStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

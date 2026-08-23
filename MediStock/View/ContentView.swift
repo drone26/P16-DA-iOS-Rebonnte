@@ -28,3 +28,9 @@ struct ContentView: View {
     ContentView()
         .environment(SessionStore())
 }
+
+#Preview("Dark Mode") {
+    ContentView()
+        .environment(SessionStore())
+        .preferredColorScheme(.dark)
+}

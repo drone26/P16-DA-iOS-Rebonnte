@@ -14,8 +14,10 @@ struct MedicineRow: View {
         VStack(alignment: .leading) {
             Text(medicine.name)
                 .font(.headline)
+                .foregroundColor(Color("PrimaryText"))
             Text("Stock: \(medicine.stock)")
                 .font(.subheadline)
+                .foregroundColor(Color("SecondaryText"))
         }
     }
 }

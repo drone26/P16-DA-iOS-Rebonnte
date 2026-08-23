@@ -69,3 +69,8 @@ struct AllMedicinesView: View {
 #Preview {
     AllMedicinesView(viewModel: MedicineStockViewModel())
 }
+
+#Preview("Dark Mode") {
+    AllMedicinesView(viewModel: MedicineStockViewModel())
+        .preferredColorScheme(.dark)
+}

@@ -18,5 +18,8 @@ struct MedicineRow: View {
                 .sectionSubtitleStyle()
         }
         .accessibilityElement(children: .combine)
+        // Stable handle for UI tests: `.combine` collapses the name/stock labels into
+        // one element, so a plain name lookup no longer matches.
+        .accessibilityIdentifier("medicineRow-\(medicine.name)")
     }
 }

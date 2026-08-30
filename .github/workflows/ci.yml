@@ -146,6 +146,27 @@ jobs:
           key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
 
+      # Build before starting the emulators (not as part of one combined `xcodebuild
+      # test`): the Firestore emulator's JVM and the Auth emulator's Node process are
+      # otherwise idling and competing for CPU with the Swift/Firebase-SDK compile for
+      # the ~10+ minutes that takes, which starves xcodebuild's test-session handshake
+      # (LLDB debugserver connection) and manifests as
+      # "IDELaunchParametersSnapshot ... DebuggerVersionStore.StoreError" / "no
+      # debugger version" with every app launch stalling well past its timeout. Doing
+      # the heavy compile first, with nothing else competing for the runner's limited
+      # CPU, removes that contention window.
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$SIMULATOR" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -derivedDataPath DerivedData \
+            -only-testing:MediStockUITests \
+            | xcbeautify --renderer github-actions
+
       - name: Start Firebase Emulator Suite
         run: |
           firebase emulators:start \
@@ -174,11 +195,11 @@ jobs:
       - name: Run UI tests
         run: |
           set -o pipefail
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
             -destination "$SIMULATOR" \
-            -clonedSourcePackagesDirPath .spm-cache \
+            -derivedDataPath DerivedData \
             -resultBundlePath TestResults/UITests.xcresult \
             -only-testing:MediStockUITests \
             -parallel-testing-enabled NO \

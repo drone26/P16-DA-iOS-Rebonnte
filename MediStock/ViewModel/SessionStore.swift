@@ -7,25 +7,30 @@
 
 import Foundation
 import Observation
-import Firebase
 
 @Observable
 @MainActor
 final class SessionStore {
     var session: User?
     var errorMessage: String?
+
     @ObservationIgnored
-    private nonisolated(unsafe) var handle: AuthStateDidChangeListenerHandle?
+    private let auth: AuthServicing
+    @ObservationIgnored
+    private nonisolated(unsafe) var stateListener: ListenerToken?
+
+    convenience init() {
+        self.init(auth: FirebaseAuthService())
+    }
+
+    init(auth: AuthServicing) {
+        self.auth = auth
+    }
 
     func listen() {
-        guard handle == nil else { return }
-        handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            guard let self else { return }
-            if let user {
-                self.session = User(uid: user.uid, email: user.email)
-            } else {
-                self.session = nil
-            }
+        guard stateListener == nil else { return }
+        stateListener = auth.addStateListener { [weak self] user in
+            self?.session = user
         }
     }
 
@@ -42,7 +47,7 @@ final class SessionStore {
         password.count >= 20
     }
 
-    func signUp(email: String, password: String) {
+    func signUp(email: String, password: String) async {
         guard isValidEmail(email) else {
             errorMessage = "Please enter a valid email address."
             return
@@ -51,18 +56,14 @@ final class SessionStore {
             errorMessage = "Password must be at least 20 characters."
             return
         }
-        Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
-            Task { @MainActor in
-                if let error {
-                    self?.errorMessage = error.localizedDescription
-                } else {
-                    self?.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
-                }
-            }
+        do {
+            session = try await auth.signUp(email: email, password: password)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
-    func signIn(email: String, password: String) {
+    func signIn(email: String, password: String) async {
         guard isValidEmail(email) else {
             errorMessage = "Please enter a valid email address."
             return
@@ -71,20 +72,16 @@ final class SessionStore {
             errorMessage = "Password must be at least 20 characters."
             return
         }
-        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
-            Task { @MainActor in
-                if let error {
-                    self?.errorMessage = error.localizedDescription
-                } else {
-                    self?.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
-                }
-            }
+        do {
+            session = try await auth.signIn(email: email, password: password)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
     func signOut() {
         do {
-            try Auth.auth().signOut()
+            try auth.signOut()
             session = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -92,15 +89,11 @@ final class SessionStore {
     }
 
     func unbind() {
-        if let handle {
-            Auth.auth().removeStateDidChangeListener(handle)
-            self.handle = nil
-        }
+        stateListener?.cancel()
+        stateListener = nil
     }
 
     deinit {
-        if let handle {
-            Auth.auth().removeStateDidChangeListener(handle)
-        }
+        stateListener?.cancel()
     }
 }

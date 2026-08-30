@@ -40,7 +40,7 @@ struct AllMedicinesView: View {
                     isLoadingMore: viewModel.isLoadingMoreFilteredMedicines,
                     onRowAppear: { viewModel.loadMoreFilteredMedicinesIfNeeded(currentItem: $0) },
                     onDelete: { medicine in
-                        viewModel.deleteMedicine(medicine, user: session.session?.identifier ?? "")
+                        Task { await viewModel.deleteMedicine(medicine, user: session.session?.identifier ?? "") }
                     }
                 )
                 // Destination is resolved from the value captured in the NavigationStack's

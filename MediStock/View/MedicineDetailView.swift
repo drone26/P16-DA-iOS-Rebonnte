@@ -85,6 +85,7 @@ extension MedicineDetailView {
         LabeledSection(label: "Name") {
             TextField("Name", text: $medicine.name)
                 .formFieldStyle()
+                .accessibilityHint(isNameValid ? "" : "Name cannot be empty")
             if !isNameValid {
                 Text("Name cannot be empty")
                     .sectionSubtitleStyle()
@@ -102,15 +103,19 @@ extension MedicineDetailView {
                         .foregroundColor(Color("NegativeColor"))
                 }
                 .disabled(!viewModel.isValidStock(medicine.stock - 1))
+                .accessibilityLabel("Decrease stock")
                 TextField("Stock", value: $medicine.stock, formatter: NumberFormatter())
                     .formFieldStyle()
                     .keyboardType(.numberPad)
-                    .frame(width: 100)
+                    .frame(minWidth: 60, idealWidth: 100)
+                    .accessibilityLabel("Stock quantity")
+                    .accessibilityHint(isStockValid ? "" : "Stock cannot be negative")
                 Button(action: { medicine.stock += 1 }) {
                     Image(systemName: "plus.circle")
                         .font(.title)
                         .foregroundColor(Color("PositiveColor"))
                 }
+                .accessibilityLabel("Increase stock")
             }
             if !isStockValid {
                 Text("Stock cannot be negative")
@@ -124,6 +129,7 @@ extension MedicineDetailView {
         LabeledSection(label: "Aisle") {
             TextField("Aisle", text: $medicine.aisle)
                 .formFieldStyle()
+                .accessibilityHint(isAisleValid ? "" : "Aisle cannot be empty")
             if !isAisleValid {
                 Text("Aisle cannot be empty")
                     .sectionSubtitleStyle()
@@ -138,7 +144,7 @@ extension MedicineDetailView {
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(hasUnsavedChanges ? Color("PositiveColor") : Color("SecondaryText"))
+                .background(hasUnsavedChanges ? Color("PositiveButtonBackground") : Color("SecondaryText"))
                 .foregroundColor(.white)
                 .cornerRadius(10)
         }

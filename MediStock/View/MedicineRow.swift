@@ -17,5 +17,6 @@ struct MedicineRow: View {
             Text("Stock: \(medicine.stock)")
                 .sectionSubtitleStyle()
         }
+        .accessibilityElement(children: .combine)
     }
 }

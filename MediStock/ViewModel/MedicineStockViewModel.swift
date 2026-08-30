@@ -300,6 +300,23 @@ final class MedicineStockViewModel {
         }
     }
 
+    /// Deletes a single medicine and records a matching history entry in one atomic batch,
+    /// for the swipe-to-delete row action.
+    func deleteMedicine(_ medicine: Medicine, user: String) {
+        guard let id = medicine.id else { return }
+        let db = self.db
+        Task { [weak self] in
+            do {
+                let batch = db.batch()
+                batch.deleteDocument(db.collection("medicines").document(id))
+                try Self.addHistoryEntry(to: batch, db: db, action: "Deleted \(medicine.name)", user: user, medicineId: id, details: "Deleted medicine")
+                try await batch.commit()
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     /// Runs the update as a transaction so the history entry can describe exactly which
     /// fields changed (read from the server's current state, not from whatever the caller's
     /// local copy happens to hold) instead of a generic "medicine updated" message.

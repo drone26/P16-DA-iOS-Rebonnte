@@ -42,6 +42,7 @@
 		E2A42C1DB117F74FDC45AD61 /* PaginatedMedicineList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */; };
 		42A65A378A6047AA95830ECA /* ErrorAlertModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */; };
 		54ABE93F9AE37AF8F7205333 /* FormFieldStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */; };
+			C74F375F7DE63ED43CDB3715 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F773E63AC080D31DF5B47DAC /* ProfileView.swift */; };
 		F8F9FB8224F992C9FADA1E89 /* AddMedicineToolbarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3265732FC15CB1EBD5451A /* AddMedicineToolbarButton.swift */; };
 		217523FEF9B4C23465BA00DD /* TextStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5668A1684D61B85A88F6F66D /* TextStyles.swift */; };
 		4D8F5FC24EBF3BA2D06C0C9D /* LabeledSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC8EA262DD5B4C799DF7A6E /* LabeledSection.swift */; };
@@ -97,6 +98,7 @@
 		53E0D8EB2C06717200DE1134 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		53E0D8ED2C06718100DE1134 /* AllMedicinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllMedicinesView.swift; sourceTree = "<group>"; };
 		FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PaginatedMedicineList.swift; path = PaginatedMedicineList.swift; sourceTree = "<group>"; };
+			F773E63AC080D31DF5B47DAC /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -231,6 +233,7 @@
 				5668A1684D61B85A88F6F66D /* TextStyles.swift */,
 				4AC8EA262DD5B4C799DF7A6E /* LabeledSection.swift */,
 				A31A2856D2478F21EB19061E /* HistoryEntryRow.swift */,
+					F773E63AC080D31DF5B47DAC /* ProfileView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -412,6 +415,7 @@
 				F8F9FB8224F992C9FADA1E89 /* AddMedicineToolbarButton.swift in Sources */,
 				217523FEF9B4C23465BA00DD /* TextStyles.swift in Sources */,
 				4D8F5FC24EBF3BA2D06C0C9D /* LabeledSection.swift in Sources */,
+					C74F375F7DE63ED43CDB3715 /* ProfileView.swift in Sources */,
 				3289A4F00234C58062474EAD /* HistoryEntryRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

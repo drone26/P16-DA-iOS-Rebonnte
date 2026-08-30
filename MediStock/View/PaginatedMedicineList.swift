@@ -15,6 +15,11 @@ struct PaginatedMedicineList: View {
     let medicines: [Medicine]
     let isLoadingMore: Bool
     let onRowAppear: (Medicine) -> Void
+    /// When provided, rows get a swipe-to-delete action (confirmed via an alert) that calls
+    /// back into this closure. Left `nil` by callers that don't support deletion.
+    var onDelete: ((Medicine) -> Void)? = nil
+
+    @State private var medicineToDelete: Medicine?
 
     var body: some View {
         List {
@@ -25,6 +30,15 @@ struct PaginatedMedicineList: View {
                 .onAppear {
                     onRowAppear(medicine)
                 }
+                .swipeActions(edge: .trailing, allowsFullSwipe: onDelete != nil) {
+                    if onDelete != nil {
+                        Button(role: .destructive) {
+                            medicineToDelete = medicine
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
             }
 
             if isLoadingMore {
@@ -34,6 +48,25 @@ struct PaginatedMedicineList: View {
                     Spacer()
                 }
             }
+        }
+        .alert(
+            "Delete \(medicineToDelete?.name ?? "this medicine")?",
+            isPresented: Binding(
+                get: { medicineToDelete != nil },
+                set: { isPresented in if !isPresented { medicineToDelete = nil } }
+            )
+        ) {
+            Button("Delete", role: .destructive) {
+                if let medicineToDelete {
+                    onDelete?(medicineToDelete)
+                }
+                medicineToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                medicineToDelete = nil
+            }
+        } message: {
+            Text("This will permanently remove the medicine and cannot be undone.")
         }
     }
 }

@@ -25,6 +25,11 @@ fi
 
 PROJECT_ID="gestionstockmedicaments-3818"
 BUNDLE_ID="eu.myk8s.MediStock"
+# FirebaseInstallations validates API_KEY's shape (`A` + 38 more chars, 39 total)
+# during FIRApp.configure() and raises an uncaught NSException — crashing the app
+# on every launch — if it doesn't look like a real key. The emulators never check
+# it, so any string of the right shape works.
+FAKE_API_KEY="AIzaSyFAKE0CIFAKE0API0KEY00000000000000"
 
 echo "Generating MediStock/GoogleService-Info.plist"
 cat > MediStock/GoogleService-Info.plist <<PLIST
@@ -33,7 +38,7 @@ cat > MediStock/GoogleService-Info.plist <<PLIST
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>FAKE-CI-API-KEY</string>
+	<string>${FAKE_API_KEY}</string>
 	<key>GCM_SENDER_ID</key>
 	<string>000000000000</string>
 	<key>PLIST_VERSION</key>

@@ -100,22 +100,6 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      # Freshly-provisioned runner VMs sometimes haven't finished Xcode's first-launch
-      # setup, which provisions the LLDB debugger version store. Without it every
-      # `app.launch()` in the UI tests fails with "IDELaunchParametersSnapshot ...
-      # DebuggerVersionStore.StoreError" / "no debugger version" and the app never
-      # appears, timing out every test. Force first-launch setup and pre-boot the
-      # simulator so both are ready before xcodebuild tries to launch anything.
-      - name: Prepare Xcode & simulator
-        run: |
-          sudo xcodebuild -runFirstLaunch
-          xcrun simctl list runtimes
-          DEVICE_ID=$(xcrun simctl list devices available -j \
-            | python3 -c "import json,sys; devices=json.load(sys.stdin)['devices']; \
-              print(next(d['udid'] for runtime in devices.values() for d in runtime if d['name']=='iPhone 17 Pro'))")
-          xcrun simctl boot "$DEVICE_ID" || true
-          xcrun simctl bootstatus "$DEVICE_ID" -b
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20

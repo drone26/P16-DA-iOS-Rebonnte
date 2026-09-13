@@ -11,38 +11,15 @@ import FirebaseFirestoreSwift
 
 struct Medicine: Identifiable, Codable, Equatable, Hashable {
     @DocumentID var id: String?
-    var name: String {
-        didSet {
-            guard oldValue != name else { return }
-            nameSubstrings = Medicine.substrings(of: name)
-        }
-    }
+    var name: String
     var stock: Int
     var aisle: String
-    /// Precomputed lowercase substrings of `name`, persisted to Firestore so a
-    /// `whereField("nameSubstrings", arrayContains:)` query can match text found
-    /// anywhere in the name rather than only a leading prefix. Optional so documents
-    /// written before this field existed still decode instead of being dropped.
-    var nameSubstrings: [String]?
 
     init(id: String? = nil, name: String, stock: Int, aisle: String) {
         self.id = id
         self.name = name
         self.stock = stock
         self.aisle = aisle
-        self.nameSubstrings = Medicine.substrings(of: name)
-    }
-
-    static func substrings(of name: String) -> [String] {
-        let characters = Array(name.lowercased())
-        guard !characters.isEmpty else { return [] }
-        var result = Set<String>()
-        for start in 0..<characters.count {
-            for end in (start + 1)...characters.count {
-                result.insert(String(characters[start..<end]))
-            }
-        }
-        return Array(result)
     }
 
     /// Human-readable, field-by-field description of what changed between two revisions

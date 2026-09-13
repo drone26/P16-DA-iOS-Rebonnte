@@ -1,0 +1,204 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat-ci]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: MediStock
+  PROJECT: MediStock.xcodeproj
+  SIMULATOR: platform=iOS Simulator,name=iPhone 17 Pro,OS=latest
+
+jobs:
+  lint:
+    name: Lint (SwiftLint)
+    runs-on: ubuntu-latest
+    # Non-blocking for now: surface violations without failing the pipeline.
+    continue-on-error: true
+    container:
+      image: ghcr.io/realm/swiftlint:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SwiftLint version
+        run: swiftlint version
+      - name: Run SwiftLint
+        run: swiftlint lint --reporter github-actions-logging
+
+  unit-tests:
+    name: Unit tests (MediStockTests)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+      - name: Install xcbeautify
+        run: command -v xcbeautify >/dev/null || brew install xcbeautify
+
+      - name: Generate Firebase config
+        run: ./scripts/ci/generate-firebase-config.sh
+        env:
+          CI: "true"
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm-cache
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Resolve packages
+        run: >
+          xcodebuild -resolvePackageDependencies
+          -project "$PROJECT" -scheme "$SCHEME"
+          -clonedSourcePackagesDirPath .spm-cache
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$SIMULATOR" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -resultBundlePath TestResults/UnitTests.xcresult \
+            -only-testing:MediStockTests \
+            | xcbeautify --renderer github-actions
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults/UnitTests.xcresult
+          if-no-files-found: ignore
+
+  ui-tests:
+    name: UI tests (MediStockUITests + Firebase emulators)
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache Firebase emulator binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}
+
+      - name: Install tooling
+        run: |
+          command -v xcbeautify >/dev/null || brew install xcbeautify
+          npm install -g firebase-tools
+          firebase --version
+          java -version
+          firebase setup:emulators:firestore
+
+      - name: Generate Firebase config
+        run: ./scripts/ci/generate-firebase-config.sh
+        env:
+          CI: "true"
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .spm-cache
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      # Build before starting the emulators (not as part of one combined `xcodebuild
+      # test`): the Firestore emulator's JVM and the Auth emulator's Node process are
+      # otherwise idling and competing for CPU with the Swift/Firebase-SDK compile for
+      # the ~10+ minutes that takes, which starves xcodebuild's test-session handshake
+      # (LLDB debugserver connection) and manifests as
+      # "IDELaunchParametersSnapshot ... DebuggerVersionStore.StoreError" / "no
+      # debugger version" with every app launch stalling well past its timeout. Doing
+      # the heavy compile first, with nothing else competing for the runner's limited
+      # CPU, removes that contention window.
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$SIMULATOR" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -derivedDataPath DerivedData \
+            -only-testing:MediStockUITests \
+            | xcbeautify --renderer github-actions
+
+      - name: Start Firebase Emulator Suite
+        run: |
+          firebase emulators:start \
+            --only auth,firestore \
+            --project gestionstockmedicaments-3818 \
+            > emulators.log 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for emulators
+        run: |
+          for i in $(seq 1 90); do
+            if nc -z 127.0.0.1 8080 && nc -z 127.0.0.1 9099; then
+              echo "Auth + Firestore emulators are listening."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Emulators did not become ready in time"
+          cat emulators.log
+          exit 1
+
+      # Note: do NOT add CODE_SIGNING_ALLOWED=NO here. It strips the ad-hoc
+      # keychain-access-groups entitlement, and Firebase Auth then fails to persist
+      # the session, breaking every sign-in flow. Simulator builds sign ad-hoc with
+      # no certificate required.
+      - name: Run UI tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$SIMULATOR" \
+            -derivedDataPath DerivedData \
+            -resultBundlePath TestResults/UITests.xcresult \
+            -only-testing:MediStockUITests \
+            -parallel-testing-enabled NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Stop emulators
+        if: always()
+        run: kill "${EMULATOR_PID}" 2>/dev/null || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-results
+          path: |
+            TestResults/UITests.xcresult
+            emulators.log
+          if-no-files-found: ignore

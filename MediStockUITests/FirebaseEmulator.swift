@@ -72,8 +72,8 @@ enum FirebaseEmulator {
         send(req, file: file, line: line)
     }
 
-    /// Inserts one medicine document straight into the Firestore emulator. The app's
-    /// name filter is a plain `name` range query, so no extra fields are needed.
+    /// Inserts one medicine document straight into the Firestore emulator, including
+    /// the precomputed lowercase `nameSubstrings` the app's name filter queries against.
     @discardableResult
     static func seedMedicine(
         id: String = UUID().uuidString,
@@ -90,11 +90,25 @@ enum FirebaseEmulator {
         let fields: [String: Any] = [
             "name": ["stringValue": name],
             "stock": ["integerValue": String(stock)],
-            "aisle": ["stringValue": aisle]
+            "aisle": ["stringValue": aisle],
+            "nameSubstrings": ["arrayValue": ["values": substrings(of: name).map { ["stringValue": $0] }]]
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: ["fields": fields])
         send(req, file: file, line: line)
         return id
+    }
+
+    /// Mirrors `Medicine.substrings(of:)` in the app target (not importable here).
+    private static func substrings(of name: String) -> [String] {
+        let characters = Array(name.lowercased())
+        guard !characters.isEmpty else { return [] }
+        var result = Set<String>()
+        for start in 0..<characters.count {
+            for end in (start + 1)...characters.count {
+                result.insert(String(characters[start..<end]))
+            }
+        }
+        return Array(result)
     }
 
     // MARK: - Networking

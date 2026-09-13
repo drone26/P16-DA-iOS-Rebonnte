@@ -21,7 +21,7 @@ struct ProfileView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color("NegativeColor"))
+                        .background(Color("NegativeButtonBackground"))
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }

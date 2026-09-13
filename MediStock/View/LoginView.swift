@@ -32,6 +32,7 @@ struct LoginView: View {
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .padding(.horizontal)
+                .accessibilityHint(!email.isEmpty && !isEmailValid ? "Enter a valid email address" : "")
             if !email.isEmpty && !isEmailValid {
                 Text("Enter a valid email address")
                     .sectionSubtitleStyle()
@@ -41,6 +42,7 @@ struct LoginView: View {
                 .formFieldStyle()
                 .padding(.horizontal)
                 .padding(.top)
+                .accessibilityHint(!password.isEmpty && !isPasswordValid ? "Password must be at least 20 characters" : "")
             if !password.isEmpty && !isPasswordValid {
                 Text("Password must be at least 20 characters")
                     .sectionSubtitleStyle()
@@ -53,7 +55,7 @@ struct LoginView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(canSubmit ? Color("PositiveColor") : Color("SecondaryText"))
+                    .background(canSubmit ? Color("PositiveButtonBackground") : Color("SecondaryText"))
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
@@ -67,7 +69,7 @@ struct LoginView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(canSubmit ? Color("PositiveColor") : Color("SecondaryText"))
+                    .background(canSubmit ? Color("PositiveButtonBackground") : Color("SecondaryText"))
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }

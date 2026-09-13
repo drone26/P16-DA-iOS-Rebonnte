@@ -35,5 +35,6 @@ struct HistoryEntryRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color("CardBackground"))
         .cornerRadius(10)
+        .accessibilityElement(children: .combine)
     }
 }

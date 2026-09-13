@@ -23,6 +23,7 @@ private struct AddMedicineToolbarButtonModifier: ViewModifier {
             viewModel.addRandomMedicine(user: session.session?.identifier ?? "")
         }) {
             Image(systemName: "plus")
-        })
+        }
+        .accessibilityLabel("Add random medicine"))
     }
 }

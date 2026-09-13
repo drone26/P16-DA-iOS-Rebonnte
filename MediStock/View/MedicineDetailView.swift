@@ -24,6 +24,22 @@ struct MedicineDetailView: View {
         medicine != savedMedicine
     }
 
+    private var isNameValid: Bool {
+        viewModel.isValidName(medicine.name)
+    }
+
+    private var isStockValid: Bool {
+        viewModel.isValidStock(medicine.stock)
+    }
+
+    private var isAisleValid: Bool {
+        viewModel.isValidAisle(medicine.aisle)
+    }
+
+    private var isMedicineValid: Bool {
+        isNameValid && isStockValid && isAisleValid
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -69,6 +85,11 @@ extension MedicineDetailView {
         LabeledSection(label: "Name") {
             TextField("Name", text: $medicine.name)
                 .formFieldStyle()
+            if !isNameValid {
+                Text("Name cannot be empty")
+                    .sectionSubtitleStyle()
+                    .foregroundColor(Color("NegativeColor"))
+            }
         }
     }
 
@@ -80,6 +101,7 @@ extension MedicineDetailView {
                         .font(.title)
                         .foregroundColor(Color("NegativeColor"))
                 }
+                .disabled(!viewModel.isValidStock(medicine.stock - 1))
                 TextField("Stock", value: $medicine.stock, formatter: NumberFormatter())
                     .formFieldStyle()
                     .keyboardType(.numberPad)
@@ -90,6 +112,11 @@ extension MedicineDetailView {
                         .foregroundColor(Color("PositiveColor"))
                 }
             }
+            if !isStockValid {
+                Text("Stock cannot be negative")
+                    .sectionSubtitleStyle()
+                    .foregroundColor(Color("NegativeColor"))
+            }
         }
     }
 
@@ -97,6 +124,11 @@ extension MedicineDetailView {
         LabeledSection(label: "Aisle") {
             TextField("Aisle", text: $medicine.aisle)
                 .formFieldStyle()
+            if !isAisleValid {
+                Text("Aisle cannot be empty")
+                    .sectionSubtitleStyle()
+                    .foregroundColor(Color("NegativeColor"))
+            }
         }
     }
 
@@ -110,7 +142,7 @@ extension MedicineDetailView {
                 .foregroundColor(.white)
                 .cornerRadius(10)
         }
-        .disabled(!hasUnsavedChanges)
+        .disabled(!hasUnsavedChanges || !isMedicineValid)
         .padding(.horizontal)
     }
 

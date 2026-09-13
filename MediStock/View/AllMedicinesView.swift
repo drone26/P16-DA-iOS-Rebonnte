@@ -34,18 +34,11 @@ struct AllMedicinesView: View {
                 .padding(.top, 10)
                 
                 // Liste des Médicaments
-                List {
-                    ForEach(viewModel.filteredMedicines, id: \.id) { medicine in
-                        NavigationLink(value: medicine) {
-                            VStack(alignment: .leading) {
-                                Text(medicine.name)
-                                    .font(.headline)
-                                Text("Stock: \(medicine.stock)")
-                                    .font(.subheadline)
-                            }
-                        }
-                    }
-                }
+                PaginatedMedicineList(
+                    medicines: viewModel.filteredMedicines,
+                    isLoadingMore: viewModel.isLoadingMoreFilteredMedicines,
+                    onRowAppear: { viewModel.loadMoreFilteredMedicinesIfNeeded(currentItem: $0) }
+                )
                 // Destination is resolved from the value captured in the NavigationStack's
                 // path rather than looked up live in `filteredMedicines`, so editing a
                 // medicine's name/aisle while a filter is active (which can remove it from

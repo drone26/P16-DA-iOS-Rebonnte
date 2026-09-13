@@ -1,11 +1,12 @@
 import Foundation
 import Firebase
 
+@MainActor
 class MedicineStockViewModel: ObservableObject {
     @Published var medicines: [Medicine] = []
     @Published var aisles: [String] = []
     @Published var history: [HistoryEntry] = []
-    private var db = Firestore.firestore()
+    private let db = Firestore.firestore()
 
     func fetchMedicines() {
         db.collection("medicines").addSnapshotListener { (querySnapshot, error) in
@@ -34,21 +35,27 @@ class MedicineStockViewModel: ObservableObject {
 
     func addRandomMedicine(user: String) {
         let medicine = Medicine(name: "Medicine \(Int.random(in: 1...100))", stock: Int.random(in: 1...100), aisle: "Aisle \(Int.random(in: 1...10))")
-        do {
-            try db.collection("medicines").document(medicine.id ?? UUID().uuidString).setData(from: medicine)
-            addHistory(action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
-        } catch let error {
-            print("Error adding document: \(error)")
+        let db = self.db
+        Task.detached {
+            do {
+                try db.collection("medicines").document(medicine.id ?? UUID().uuidString).setData(from: medicine)
+                await Self.addHistory(db: db, action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
+            } catch {
+                print("Error adding document: \(error)")
+            }
         }
     }
 
     func deleteMedicines(at offsets: IndexSet) {
-        offsets.map { medicines[$0] }.forEach { medicine in
-            if let id = medicine.id {
-                db.collection("medicines").document(id).delete { error in
-                    if let error = error {
-                        print("Error removing document: \(error)")
-                    }
+        let medicinesToDelete = offsets.map { medicines[$0] }
+        let db = self.db
+        Task.detached {
+            for medicine in medicinesToDelete {
+                guard let id = medicine.id else { continue }
+                do {
+                    try await db.collection("medicines").document(id).delete()
+                } catch {
+                    print("Error removing document: \(error)")
                 }
             }
         }
@@ -65,35 +72,42 @@ class MedicineStockViewModel: ObservableObject {
     private func updateStock(_ medicine: Medicine, by amount: Int, user: String) {
         guard let id = medicine.id else { return }
         let newStock = medicine.stock + amount
-        db.collection("medicines").document(id).updateData([
-            "stock": newStock
-        ]) { error in
-            if let error = error {
+        let db = self.db
+        Task.detached { [weak self] in
+            do {
+                try await db.collection("medicines").document(id).updateData(["stock": newStock])
+                await self?.applyStockUpdate(id: id, newStock: newStock)
+                await Self.addHistory(db: db, action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
+            } catch {
                 print("Error updating stock: \(error)")
-            } else {
-                if let index = self.medicines.firstIndex(where: { $0.id == id }) {
-                    self.medicines[index].stock = newStock
-                }
-                self.addHistory(action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
             }
+        }
+    }
+
+    private func applyStockUpdate(id: String, newStock: Int) {
+        if let index = medicines.firstIndex(where: { $0.id == id }) {
+            medicines[index].stock = newStock
         }
     }
 
     func updateMedicine(_ medicine: Medicine, user: String) {
         guard let id = medicine.id else { return }
-        do {
-            try db.collection("medicines").document(id).setData(from: medicine)
-            addHistory(action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
-        } catch let error {
-            print("Error updating document: \(error)")
+        let db = self.db
+        Task.detached {
+            do {
+                try db.collection("medicines").document(id).setData(from: medicine)
+                await Self.addHistory(db: db, action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
+            } catch {
+                print("Error updating document: \(error)")
+            }
         }
     }
 
-    private func addHistory(action: String, user: String, medicineId: String, details: String) {
+    private static func addHistory(db: Firestore, action: String, user: String, medicineId: String, details: String) async {
         let history = HistoryEntry(medicineId: medicineId, user: user, action: action, details: details)
         do {
             try db.collection("history").document(history.id ?? UUID().uuidString).setData(from: history)
-        } catch let error {
+        } catch {
             print("Error adding history: \(error)")
         }
     }

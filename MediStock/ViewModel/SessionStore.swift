@@ -1,3 +1,10 @@
+//
+//  SessionStore.swift
+//  MediStock
+//
+//  Created by Mathieu Arrio on 2026/08/18.
+//
+
 import Foundation
 import Observation
 import Firebase
@@ -6,6 +13,7 @@ import Firebase
 @MainActor
 final class SessionStore {
     var session: User?
+    @ObservationIgnored
     private nonisolated(unsafe) var handle: AuthStateDidChangeListenerHandle?
 
     func listen() {
@@ -22,22 +30,26 @@ final class SessionStore {
 
     func signUp(email: String, password: String) {
         Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
-            guard let self else { return }
             if let error {
                 print("Error creating user: \(error.localizedDescription)")
             } else {
-                self.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
+                let user = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
+                Task { @MainActor in
+                    self?.session = user
+                }
             }
         }
     }
 
     func signIn(email: String, password: String) {
         Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
-            guard let self else { return }
             if let error {
                 print("Error signing in: \(error.localizedDescription)")
             } else {
-                self.session = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
+                let user = User(uid: result?.user.uid ?? "", email: result?.user.email ?? "")
+                Task { @MainActor in
+                    self?.session = user
+                }
             }
         }
     }

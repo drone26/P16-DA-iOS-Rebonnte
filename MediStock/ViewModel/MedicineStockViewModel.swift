@@ -1,3 +1,10 @@
+//
+//  MedicineStockViewModel.swift
+//  MediStock
+//
+//  Created by Mathieu Arrio on 2026/08/18.
+//
+
 import Foundation
 import Observation
 import Firebase
@@ -14,10 +21,17 @@ enum SortOption: String, CaseIterable, Identifiable {
 @MainActor
 final class MedicineStockViewModel {
     var medicines: [Medicine] = []
+    var filteredMedicines: [Medicine] = []
+    var medicinesInAisle: [Medicine] = []
     var history: [HistoryEntry] = []
     private let db = Firestore.firestore()
 
+    @ObservationIgnored
     private nonisolated(unsafe) var medicinesListener: ListenerRegistration?
+    @ObservationIgnored
+    private nonisolated(unsafe) var filteredMedicinesListener: ListenerRegistration?
+    @ObservationIgnored
+    private nonisolated(unsafe) var aisleMedicinesListener: ListenerRegistration?
 
     var aisles: [String] {
         Array(Set(medicines.map { $0.aisle })).sorted()
@@ -31,10 +45,93 @@ final class MedicineStockViewModel {
                 print("Error getting documents: \(error)")
                 return
             }
-            self.medicines = querySnapshot?.documents.compactMap { document in
+            let documents = querySnapshot?.documents ?? []
+            self.medicines = documents.compactMap { document in
+                try? document.data(as: Medicine.self)
+            }
+            self.backfillMissingNameSubstrings(in: documents)
+        }
+    }
+
+    /// Self-heals documents written before `nameSubstrings` existed (or created outside
+    /// the app) so they remain findable by `fetchFilteredAndSortedMedicines`'s
+    /// `arrayContains` search.
+    private func backfillMissingNameSubstrings(in documents: [QueryDocumentSnapshot]) {
+        for document in documents {
+            guard document.data()["nameSubstrings"] == nil,
+                  let medicine = try? document.data(as: Medicine.self) else { continue }
+            let substrings = Medicine.substrings(of: medicine.name)
+            Task {
+                do {
+                    try await document.reference.updateData(["nameSubstrings": substrings])
+                } catch {
+                    print("Error backfilling nameSubstrings: \(error)")
+                }
+            }
+        }
+    }
+
+    /// Filters and sorts medicines server-side using Firestore query constraints instead
+    /// of loading everything and filtering in Swift. A non-empty filter matches
+    /// `nameSubstrings` (precomputed substrings of the name, see `Medicine.substrings`)
+    /// via `arrayContains`, so it can match text found anywhere in the name, not just a
+    /// leading prefix. Combining `arrayContains` with `order(by:)` on a different field
+    /// needs a Firestore composite index, so when a filter is active, sorting is applied
+    /// locally to the already server-filtered (small) result instead.
+    func fetchFilteredAndSortedMedicines(filterText: String, sortOption: SortOption) {
+        filteredMedicinesListener?.remove()
+
+        let trimmedFilter = filterText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        var query: Query = db.collection("medicines")
+
+        if !trimmedFilter.isEmpty {
+            query = query.whereField("nameSubstrings", arrayContains: trimmedFilter)
+        } else if sortOption == .name {
+            query = query.order(by: "name")
+        } else if sortOption == .stock {
+            query = query.order(by: "stock")
+        }
+
+        filteredMedicinesListener = query.addSnapshotListener { [weak self] querySnapshot, error in
+            guard let self else { return }
+            if let error {
+                print("Error getting filtered documents: \(error)")
+                return
+            }
+            var results = querySnapshot?.documents.compactMap { document in
                 try? document.data(as: Medicine.self)
             } ?? []
+
+            if !trimmedFilter.isEmpty {
+                switch sortOption {
+                case .name:
+                    results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                case .stock:
+                    results.sort { $0.stock < $1.stock }
+                case .none:
+                    break
+                }
+            }
+
+            self.filteredMedicines = results
         }
+    }
+
+    /// Fetches only the medicines for a given aisle using a Firestore `whereField` query.
+    func fetchMedicines(inAisle aisle: String) {
+        aisleMedicinesListener?.remove()
+        aisleMedicinesListener = db.collection("medicines")
+            .whereField("aisle", isEqualTo: aisle)
+            .addSnapshotListener { [weak self] querySnapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("Error getting aisle documents: \(error)")
+                    return
+                }
+                self.medicinesInAisle = querySnapshot?.documents.compactMap { document in
+                    try? document.data(as: Medicine.self)
+                } ?? []
+            }
     }
 
     func fetchHistory(for medicine: Medicine) {
@@ -57,10 +154,16 @@ final class MedicineStockViewModel {
     func stopListening() {
         medicinesListener?.remove()
         medicinesListener = nil
+        filteredMedicinesListener?.remove()
+        filteredMedicinesListener = nil
+        aisleMedicinesListener?.remove()
+        aisleMedicinesListener = nil
     }
 
     deinit {
         medicinesListener?.remove()
+        filteredMedicinesListener?.remove()
+        aisleMedicinesListener?.remove()
     }
 
     func addRandomMedicine(user: String) {
@@ -142,24 +245,5 @@ final class MedicineStockViewModel {
         } catch {
             print("Error adding history: \(error)")
         }
-    }
-
-    func filteredAndSortedMedicines(filterText: String, sortOption: SortOption) -> [Medicine] {
-        var result = medicines
-
-        if !filterText.isEmpty {
-            result = result.filter { $0.name.lowercased().contains(filterText.lowercased()) }
-        }
-
-        switch sortOption {
-        case .name:
-            result.sort { $0.name.lowercased() < $1.name.lowercased() }
-        case .stock:
-            result.sort { $0.stock < $1.stock }
-        case .none:
-            break
-        }
-
-        return result
     }
 }

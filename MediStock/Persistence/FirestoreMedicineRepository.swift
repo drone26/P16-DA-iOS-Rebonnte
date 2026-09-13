@@ -23,7 +23,7 @@ final class FirestoreMedicineRepository: MedicineRepository {
         onChange: @escaping ([Medicine]) -> Void,
         onError: @escaping (Error) -> Void
     ) -> ListenerToken {
-        let registration = db.collection("medicines").addSnapshotListener { [weak self] querySnapshot, error in
+        let registration = db.collection("medicines").addSnapshotListener { querySnapshot, error in
             Task { @MainActor in
                 if let error {
                     onError(error)
@@ -31,7 +31,6 @@ final class FirestoreMedicineRepository: MedicineRepository {
                 }
                 let documents = querySnapshot?.documents ?? []
                 onChange(documents.compactMap { try? $0.data(as: Medicine.self) })
-                self?.backfillMissingNameSubstrings(in: documents)
             }
         }
         return ClosureListenerToken { registration.remove() }
@@ -44,17 +43,26 @@ final class FirestoreMedicineRepository: MedicineRepository {
         onChange: @escaping (_ medicines: [Medicine], _ hasMore: Bool) -> Void,
         onError: @escaping (Error) -> Void
     ) -> ListenerToken {
-        let trimmedFilter = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmedFilter = filter.trimmingCharacters(in: .whitespacesAndNewlines)
         var query: Query = db.collection("medicines")
 
         if !trimmedFilter.isEmpty {
-            query = query.whereField("nameSubstrings", arrayContains: trimmedFilter)
+            // Prefix match, straight from Firestore: every `name` in the half-open
+            // range [filter, filter + <max code point>). "\u{f8ff}" sorts after any
+            // normal character, so it acts as the upper bound of the prefix.
+            query = query
+                .whereField("name", isGreaterThanOrEqualTo: trimmedFilter)
+                .whereField("name", isLessThan: trimmedFilter + "\u{f8ff}")
         }
         switch sort {
         case .name:
             query = query.order(by: "name")
         case .stock:
-            query = query.order(by: "stock")
+            // A range filter forces `name` to be the first ordering; keep the stock
+            // sort as the secondary key. With no filter, sort by stock directly.
+            query = trimmedFilter.isEmpty
+                ? query.order(by: "stock")
+                : query.order(by: "name").order(by: "stock")
         case .none:
             break
         }
@@ -93,23 +101,6 @@ final class FirestoreMedicineRepository: MedicineRepository {
             }
         }
         return ClosureListenerToken { registration.remove() }
-    }
-
-    /// Self-heals documents written before `nameSubstrings` existed (or created outside
-    /// the app) so they remain findable by the `arrayContains` filter search.
-    private func backfillMissingNameSubstrings(in documents: [QueryDocumentSnapshot]) {
-        for document in documents {
-            guard document.data()["nameSubstrings"] == nil,
-                  let medicine = try? document.data(as: Medicine.self) else { continue }
-            let substrings = Medicine.substrings(of: medicine.name)
-            Task {
-                do {
-                    try await document.reference.updateData(["nameSubstrings": substrings])
-                } catch {
-                    print("Error backfilling nameSubstrings: \(error)")
-                }
-            }
-        }
     }
 
     // MARK: - Writes

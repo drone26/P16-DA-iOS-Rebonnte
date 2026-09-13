@@ -3,7 +3,7 @@
 //  MediStockUITests
 //
 //  Created by Vincent Saluzzo on 28/05/2024.
-//  Modified by Mathieu Arrio on 2026/08/18.
+//  Modified by Mathieu Arrio on 2026/08/30.
 //
 
 import XCTest
@@ -20,10 +20,9 @@ final class MediStockUITestsLaunchTests: XCTestCase {
 
     func testLaunch() throws {
         let app = XCUIApplication()
+        // Point at the Emulator Suite so a screenshot run never touches production.
+        app.launchArguments += ["-useFirebaseEmulator"]
         app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"

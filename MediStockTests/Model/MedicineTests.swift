@@ -10,48 +10,11 @@ import XCTest
 
 final class MedicineTests: XCTestCase {
 
-    // MARK: - substrings
-
-    func testSubstringsOfSimpleNameContainsEveryContiguousSlice() {
-        let result = Set(Medicine.substrings(of: "abc"))
-        XCTAssertEqual(result, ["a", "ab", "abc", "b", "bc", "c"])
-    }
-
-    func testSubstringsIsLowercased() {
-        XCTAssertEqual(Set(Medicine.substrings(of: "Ab")), ["a", "ab", "b"])
-    }
-
-    func testSubstringsOfEmptyStringIsEmpty() {
-        XCTAssertTrue(Medicine.substrings(of: "").isEmpty)
-    }
-
-    // MARK: - nameSubstrings maintenance
-
-    func testInitPopulatesNameSubstrings() {
-        let medicine = Medicine(name: "abc", stock: 1, aisle: "A")
-        XCTAssertEqual(Set(medicine.nameSubstrings ?? []), Set(Medicine.substrings(of: "abc")))
-    }
-
-    func testMutatingNameRecomputesNameSubstrings() {
-        var medicine = Medicine(name: "abc", stock: 1, aisle: "A")
-        medicine.name = "xy"
-        XCTAssertEqual(Set(medicine.nameSubstrings ?? []), ["x", "xy", "y"])
-    }
-
-    func testSettingNameToSameValueKeepsNameSubstrings() {
-        var medicine = Medicine(name: "abc", stock: 1, aisle: "A")
-        medicine.nameSubstrings = ["sentinel"]
-        medicine.name = "abc"
-        XCTAssertEqual(medicine.nameSubstrings, ["sentinel"])
-    }
-
     // MARK: - Equatable / Hashable
 
-    func testEqualityIgnoresNameSubstrings() {
-        var a = Medicine(id: "1", name: "abc", stock: 1, aisle: "A")
-        var b = Medicine(id: "1", name: "abc", stock: 1, aisle: "A")
-        a.nameSubstrings = ["only", "in", "a"]
-        b.nameSubstrings = nil
+    func testEqualityMatchesOnEverySignificantField() {
+        let a = Medicine(id: "1", name: "abc", stock: 1, aisle: "A")
+        let b = Medicine(id: "1", name: "abc", stock: 1, aisle: "A")
         XCTAssertEqual(a, b)
         XCTAssertEqual(a.hashValue, b.hashValue)
     }

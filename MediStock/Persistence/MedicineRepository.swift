@@ -22,9 +22,10 @@ protocol MedicineRepository {
         onError: @escaping (Error) -> Void
     ) -> ListenerToken
 
-    /// Live, paginated view of the medicines matching `filter` (matched anywhere in
-    /// the name) ordered by `sort`, capped at `limit` documents. `hasMore` is true
-    /// when a full page came back, i.e. widening `limit` may surface more rows.
+    /// Live, paginated view of the medicines whose `name` starts with `filter`
+    /// (case-sensitive prefix match, run as a Firestore range query) ordered by
+    /// `sort`, capped at `limit` documents. `hasMore` is true when a full page came
+    /// back, i.e. widening `limit` may surface more rows.
     func observeMedicines(
         matching filter: String,
         sortedBy sort: SortOption,

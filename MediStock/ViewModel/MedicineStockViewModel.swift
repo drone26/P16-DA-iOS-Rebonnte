@@ -264,8 +264,11 @@ final class MedicineStockViewModel {
     /// Writes the new medicine and its history entry as a single atomic batch so the two
     /// can never diverge (e.g. the medicine being created but no matching history entry
     /// existing because the history write failed independently).
-    func addRandomMedicine(user: String) {
-        let medicine = Medicine(name: "Medicine \(Int.random(in: 1...100))", stock: Int.random(in: 1...100), aisle: "Aisle \(Int.random(in: 1...10))")
+    func addMedicine(_ medicine: Medicine, user: String) {
+        guard isValidMedicine(medicine) else {
+            errorMessage = "Please provide a non-empty name, a non-negative stock, and a non-empty aisle before saving."
+            return
+        }
         let db = self.db
         Task { [weak self] in
             do {

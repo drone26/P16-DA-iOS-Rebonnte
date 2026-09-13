@@ -6,9 +6,8 @@
 import SwiftUI
 
 extension View {
-    /// Trailing "+" toolbar button that adds a random medicine, shared by `AisleListView`
-    /// and `AllMedicinesView`. Reads the signed-in user from `SessionStore` so callers don't
-    /// each have to plumb it through.
+    /// Trailing "+" toolbar button that opens an empty `MedicineDetailView` form for
+    /// creating a new medicine. Used by `AllMedicinesView`.
     func addMedicineToolbarButton(viewModel: MedicineStockViewModel) -> some View {
         modifier(AddMedicineToolbarButtonModifier(viewModel: viewModel))
     }
@@ -16,14 +15,21 @@ extension View {
 
 private struct AddMedicineToolbarButtonModifier: ViewModifier {
     let viewModel: MedicineStockViewModel
-    @Environment(SessionStore.self) private var session
+    @State private var isAddingMedicine = false
 
     func body(content: Content) -> some View {
-        content.navigationBarItems(trailing: Button(action: {
-            viewModel.addRandomMedicine(user: session.session?.identifier ?? "")
-        }) {
-            Image(systemName: "plus")
-        }
-        .accessibilityLabel("Add random medicine"))
+        content
+            .navigationBarItems(trailing: Button(action: {
+                isAddingMedicine = true
+            }) {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Add medicine")
+            .accessibilityHint("Opens a form to enter a new medicine"))
+            .sheet(isPresented: $isAddingMedicine) {
+                NavigationStack {
+                    MedicineDetailView(viewModel: viewModel)
+                }
+            }
     }
 }

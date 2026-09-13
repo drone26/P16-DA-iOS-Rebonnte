@@ -11,17 +11,37 @@ struct MedicineDetailView: View {
     @State var medicine: Medicine
     /// The last-saved revision, used only to know whether `medicine` has unsaved edits.
     @State private var savedMedicine: Medicine
+    /// True when the screen is an empty form for creating a medicine rather than
+    /// editing an existing one: it saves via `addMedicine` and dismisses on success,
+    /// and hides the (not-yet-existing) history.
+    private let isNewMedicine: Bool
     let viewModel: MedicineStockViewModel
     @Environment(SessionStore.self) var session
+    @Environment(\.dismiss) private var dismiss
 
     init(medicine: Medicine, viewModel: MedicineStockViewModel) {
+        self.init(medicine: medicine, viewModel: viewModel, isNewMedicine: false)
+    }
+
+    /// Opens the screen as an empty form for adding a new medicine (used by the "+"
+    /// toolbar button).
+    init(viewModel: MedicineStockViewModel) {
+        self.init(medicine: Medicine(name: "", stock: 0, aisle: ""), viewModel: viewModel, isNewMedicine: true)
+    }
+
+    private init(medicine: Medicine, viewModel: MedicineStockViewModel, isNewMedicine: Bool) {
         _medicine = State(initialValue: medicine)
         _savedMedicine = State(initialValue: medicine)
         self.viewModel = viewModel
+        self.isNewMedicine = isNewMedicine
     }
 
     private var hasUnsavedChanges: Bool {
         medicine != savedMedicine
+    }
+
+    private var isSaveEnabled: Bool {
+        isMedicineValid && (isNewMedicine || hasUnsavedChanges)
     }
 
     private var isNameValid: Bool {
@@ -44,7 +64,7 @@ struct MedicineDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Title
-                Text(medicine.name)
+                Text(isNewMedicine ? "New Medicine" : medicine.name)
                     .font(.largeTitle)
                     .foregroundColor(Color("PrimaryText"))
                     .padding(.top, 20)
@@ -62,13 +82,24 @@ struct MedicineDetailView: View {
                 saveButton
 
                 // History Section
-                historySection
+                if !isNewMedicine {
+                    historySection
+                }
             }
             .padding(.vertical)
         }
-        .navigationBarTitle("Medicine Details", displayMode: .inline)
+        .navigationBarTitle(isNewMedicine ? "Add Medicine" : "Medicine Details", displayMode: .inline)
+        .toolbar {
+            if isNewMedicine {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
         .onAppear {
-            viewModel.fetchHistory(for: medicine)
+            if !isNewMedicine {
+                viewModel.fetchHistory(for: medicine)
+            }
         }
     }
 }
@@ -77,8 +108,14 @@ extension MedicineDetailView {
     /// Persists every field at once (name, stock, aisle) as a single Firestore write with a
     /// single history entry, instead of writing on every keystroke or every +/- tap.
     private func save() {
-        viewModel.updateMedicine(medicine, user: session.session?.identifier ?? "")
-        savedMedicine = medicine
+        let user = session.session?.identifier ?? ""
+        if isNewMedicine {
+            viewModel.addMedicine(medicine, user: user)
+            dismiss()
+        } else {
+            viewModel.updateMedicine(medicine, user: user)
+            savedMedicine = medicine
+        }
     }
 
     private var medicineNameSection: some View {
@@ -140,15 +177,15 @@ extension MedicineDetailView {
 
     private var saveButton: some View {
         Button(action: save) {
-            Text("Save Changes")
+            Text(isNewMedicine ? "Add Medicine" : "Save Changes")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(hasUnsavedChanges ? Color("PositiveButtonBackground") : Color("SecondaryText"))
+                .background(isSaveEnabled ? Color("PositiveButtonBackground") : Color("SecondaryText"))
                 .foregroundColor(.white)
                 .cornerRadius(10)
         }
-        .disabled(!hasUnsavedChanges || !isMedicineValid)
+        .disabled(!isSaveEnabled)
         .padding(.horizontal)
     }
 
@@ -184,4 +221,11 @@ extension MedicineDetailView {
     MedicineDetailView(medicine: sampleMedicine, viewModel: sampleViewModel)
         .environment(SessionStore())
         .preferredColorScheme(.dark)
+}
+
+#Preview("New Medicine") {
+    NavigationStack {
+        MedicineDetailView(viewModel: MedicineStockViewModel())
+    }
+    .environment(SessionStore())
 }

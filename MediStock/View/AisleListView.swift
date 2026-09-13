@@ -30,7 +30,6 @@ struct AisleListView: View {
                 MedicineListView(aisle: aisle, viewModel: viewModel)
             }
             .navigationBarTitle("Aisles")
-            .addMedicineToolbarButton(viewModel: viewModel)
         }
     }
 }

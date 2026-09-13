@@ -42,3 +42,8 @@ struct AisleListView: View {
 #Preview {
     AisleListView(viewModel: MedicineStockViewModel())
 }
+
+#Preview("Dark Mode") {
+    AisleListView(viewModel: MedicineStockViewModel())
+        .preferredColorScheme(.dark)
+}

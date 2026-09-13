@@ -34,3 +34,9 @@ struct MedicineListView: View {
     MedicineListView(aisle: "Aisle 1", viewModel: MedicineStockViewModel())
         .environment(SessionStore())
 }
+
+#Preview("Dark Mode") {
+    MedicineListView(aisle: "Aisle 1", viewModel: MedicineStockViewModel())
+        .environment(SessionStore())
+        .preferredColorScheme(.dark)
+}

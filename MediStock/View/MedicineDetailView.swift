@@ -18,6 +18,7 @@ struct MedicineDetailView: View {
                 // Title
                 Text(medicine.name)
                     .font(.largeTitle)
+                    .foregroundColor(Color("PrimaryText"))
                     .padding(.top, 20)
 
                 // Medicine Name
@@ -49,10 +50,11 @@ extension MedicineDetailView {
         VStack(alignment: .leading) {
             Text("Name")
                 .font(.headline)
+                .foregroundColor(Color("PrimaryText"))
             TextField("Name", text: $medicine.name, onCommit: {
                 viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
             })
-            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .formFieldStyle()
             .padding(.bottom, 10)
         }
         .padding(.horizontal)
@@ -62,18 +64,19 @@ extension MedicineDetailView {
         VStack(alignment: .leading) {
             Text("Stock")
                 .font(.headline)
+                .foregroundColor(Color("PrimaryText"))
             HStack {
                 Button(action: {
                     viewModel.decreaseStock(medicine, user: session.session?.uid ?? "")
                 }) {
                     Image(systemName: "minus.circle")
                         .font(.title)
-                        .foregroundColor(.red)
+                        .foregroundColor(Color("NegativeColor"))
                 }
                 TextField("Stock", value: $medicine.stock, formatter: NumberFormatter(), onCommit: {
                     viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
                 })
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .formFieldStyle()
                 .keyboardType(.numberPad)
                 .frame(width: 100)
                 Button(action: {
@@ -81,7 +84,7 @@ extension MedicineDetailView {
                 }) {
                     Image(systemName: "plus.circle")
                         .font(.title)
-                        .foregroundColor(.green)
+                        .foregroundColor(Color("PositiveColor"))
                 }
             }
             .padding(.bottom, 10)
@@ -93,10 +96,11 @@ extension MedicineDetailView {
         VStack(alignment: .leading) {
             Text("Aisle")
                 .font(.headline)
+                .foregroundColor(Color("PrimaryText"))
             TextField("Aisle", text: $medicine.aisle, onCommit: {
                 viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
             })
-            .textFieldStyle(RoundedBorderTextFieldStyle())
+            .formFieldStyle()
             .padding(.bottom, 10)
         }
         .padding(.horizontal)
@@ -106,20 +110,25 @@ extension MedicineDetailView {
         VStack(alignment: .leading) {
             Text("History")
                 .font(.headline)
+                .foregroundColor(Color("PrimaryText"))
                 .padding(.top, 20)
             ForEach(viewModel.history.filter { $0.medicineId == medicine.id }, id: \.id) { entry in
                 VStack(alignment: .leading, spacing: 5) {
                     Text(entry.action)
                         .font(.headline)
+                        .foregroundColor(Color("PrimaryText"))
                     Text("User: \(entry.user)")
                         .font(.subheadline)
+                        .foregroundColor(Color("SecondaryText"))
                     Text("Date: \(entry.timestamp.formatted())")
                         .font(.subheadline)
+                        .foregroundColor(Color("SecondaryText"))
                     Text("Details: \(entry.details)")
                         .font(.subheadline)
+                        .foregroundColor(Color("SecondaryText"))
                 }
                 .padding()
-                .background(Color(.systemGray6))
+                .background(Color("CardBackground"))
                 .cornerRadius(10)
                 .padding(.bottom, 5)
             }
@@ -133,4 +142,12 @@ extension MedicineDetailView {
     let sampleViewModel = MedicineStockViewModel()
     MedicineDetailView(medicine: sampleMedicine, viewModel: sampleViewModel)
         .environment(SessionStore())
+}
+
+#Preview("Dark Mode") {
+    let sampleMedicine = Medicine(name: "Sample", stock: 10, aisle: "Aisle 1")
+    let sampleViewModel = MedicineStockViewModel()
+    MedicineDetailView(medicine: sampleMedicine, viewModel: sampleViewModel)
+        .environment(SessionStore())
+        .preferredColorScheme(.dark)
 }

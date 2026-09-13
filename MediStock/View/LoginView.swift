@@ -16,10 +16,10 @@ struct LoginView: View {
         @Bindable var session = session
         VStack {
             TextField("Email", text: $email)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .formFieldStyle()
                 .padding()
             SecureField("Password", text: $password)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .formFieldStyle()
                 .padding()
             Button(action: {
                 session.signIn(email: email, password: password)
@@ -40,4 +40,10 @@ struct LoginView: View {
 #Preview {
     LoginView()
         .environment(SessionStore())
+}
+
+#Preview("Dark Mode") {
+    LoginView()
+        .environment(SessionStore())
+        .preferredColorScheme(.dark)
 }

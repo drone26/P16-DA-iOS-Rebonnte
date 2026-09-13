@@ -35,3 +35,9 @@ struct MainTabView: View {
     MainTabView()
         .environment(SessionStore())
 }
+
+#Preview("Dark Mode") {
+    MainTabView()
+        .environment(SessionStore())
+        .preferredColorScheme(.dark)
+}

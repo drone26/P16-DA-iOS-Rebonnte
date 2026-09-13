@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AllMedicinesView: View {
     let viewModel: MedicineStockViewModel
+    @Environment(SessionStore.self) private var session
     @State private var filterText: String = ""
     @State private var sortOption: SortOption = .none
 
@@ -37,7 +38,10 @@ struct AllMedicinesView: View {
                 PaginatedMedicineList(
                     medicines: viewModel.filteredMedicines,
                     isLoadingMore: viewModel.isLoadingMoreFilteredMedicines,
-                    onRowAppear: { viewModel.loadMoreFilteredMedicinesIfNeeded(currentItem: $0) }
+                    onRowAppear: { viewModel.loadMoreFilteredMedicinesIfNeeded(currentItem: $0) },
+                    onDelete: { medicine in
+                        viewModel.deleteMedicine(medicine, user: session.session?.identifier ?? "")
+                    }
                 )
                 // Destination is resolved from the value captured in the NavigationStack's
                 // path rather than looked up live in `filteredMedicines`, so editing a
@@ -64,9 +68,11 @@ struct AllMedicinesView: View {
 
 #Preview {
     AllMedicinesView(viewModel: MedicineStockViewModel())
+        .environment(SessionStore())
 }
 
 #Preview("Dark Mode") {
     AllMedicinesView(viewModel: MedicineStockViewModel())
+        .environment(SessionStore())
         .preferredColorScheme(.dark)
 }

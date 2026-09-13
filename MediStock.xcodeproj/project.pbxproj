@@ -42,6 +42,10 @@
 		E2A42C1DB117F74FDC45AD61 /* PaginatedMedicineList.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */; };
 		42A65A378A6047AA95830ECA /* ErrorAlertModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */; };
 		54ABE93F9AE37AF8F7205333 /* FormFieldStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */; };
+		F8F9FB8224F992C9FADA1E89 /* AddMedicineToolbarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C3265732FC15CB1EBD5451A /* AddMedicineToolbarButton.swift */; };
+		217523FEF9B4C23465BA00DD /* TextStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5668A1684D61B85A88F6F66D /* TextStyles.swift */; };
+		4D8F5FC24EBF3BA2D06C0C9D /* LabeledSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC8EA262DD5B4C799DF7A6E /* LabeledSection.swift */; };
+		3289A4F00234C58062474EAD /* HistoryEntryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31A2856D2478F21EB19061E /* HistoryEntryRow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +71,10 @@
 		4010AD2B46C6B2C7A91C33A5 /* MedicineRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MedicineRow.swift; path = MedicineRow.swift; sourceTree = "<group>"; };
 		AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ErrorAlertModifier.swift; path = ErrorAlertModifier.swift; sourceTree = "<group>"; };
 		8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FormFieldStyle.swift; path = FormFieldStyle.swift; sourceTree = "<group>"; };
+		5C3265732FC15CB1EBD5451A /* AddMedicineToolbarButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AddMedicineToolbarButton.swift; path = AddMedicineToolbarButton.swift; sourceTree = "<group>"; };
+		5668A1684D61B85A88F6F66D /* TextStyles.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TextStyles.swift; path = TextStyles.swift; sourceTree = "<group>"; };
+		4AC8EA262DD5B4C799DF7A6E /* LabeledSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LabeledSection.swift; path = LabeledSection.swift; sourceTree = "<group>"; };
+		A31A2856D2478F21EB19061E /* HistoryEntryRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HistoryEntryRow.swift; path = HistoryEntryRow.swift; sourceTree = "<group>"; };
 		53E0D8932C06084700DE1134 /* MediStock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MediStock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		53E0D8962C06084700DE1134 /* MediStockApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediStockApp.swift; sourceTree = "<group>"; };
 		53E0D8982C06084700DE1134 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -219,6 +227,10 @@
 				FB49580E7608B4D3B009F776 /* PaginatedMedicineList.swift */,
 				AA725057DACF4903B37015BE /* ErrorAlertModifier.swift */,
 				8F2F2A8BFF535FA81FE4A229 /* FormFieldStyle.swift */,
+				5C3265732FC15CB1EBD5451A /* AddMedicineToolbarButton.swift */,
+				5668A1684D61B85A88F6F66D /* TextStyles.swift */,
+				4AC8EA262DD5B4C799DF7A6E /* LabeledSection.swift */,
+				A31A2856D2478F21EB19061E /* HistoryEntryRow.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -397,6 +409,10 @@
 				E2A42C1DB117F74FDC45AD61 /* PaginatedMedicineList.swift in Sources */,
 				42A65A378A6047AA95830ECA /* ErrorAlertModifier.swift in Sources */,
 				54ABE93F9AE37AF8F7205333 /* FormFieldStyle.swift in Sources */,
+				F8F9FB8224F992C9FADA1E89 /* AddMedicineToolbarButton.swift in Sources */,
+				217523FEF9B4C23465BA00DD /* TextStyles.swift in Sources */,
+				4D8F5FC24EBF3BA2D06C0C9D /* LabeledSection.swift in Sources */,
+				3289A4F00234C58062474EAD /* HistoryEntryRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

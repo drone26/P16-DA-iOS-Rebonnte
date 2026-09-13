@@ -9,8 +9,20 @@ import SwiftUI
 
 struct MedicineDetailView: View {
     @State var medicine: Medicine
+    /// The last-saved revision, used only to know whether `medicine` has unsaved edits.
+    @State private var savedMedicine: Medicine
     let viewModel: MedicineStockViewModel
     @Environment(SessionStore.self) var session
+
+    init(medicine: Medicine, viewModel: MedicineStockViewModel) {
+        _medicine = State(initialValue: medicine)
+        _savedMedicine = State(initialValue: medicine)
+        self.viewModel = viewModel
+    }
+
+    private var hasUnsavedChanges: Bool {
+        medicine != savedMedicine
+    }
 
     var body: some View {
         ScrollView {
@@ -30,6 +42,9 @@ struct MedicineDetailView: View {
                 // Medicine Aisle
                 medicineAisleSection
 
+                // Save
+                saveButton
+
                 // History Section
                 historySection
             }
@@ -39,20 +54,20 @@ struct MedicineDetailView: View {
         .onAppear {
             viewModel.fetchHistory(for: medicine)
         }
-        .onChange(of: medicine) { _, newMedicine in
-            viewModel.updateMedicine(newMedicine, user: session.session?.uid ?? "")
-        }
     }
 }
 
 extension MedicineDetailView {
-    private func commitUpdate() {
-        viewModel.updateMedicine(medicine, user: session.session?.uid ?? "")
+    /// Persists every field at once (name, stock, aisle) as a single Firestore write with a
+    /// single history entry, instead of writing on every keystroke or every +/- tap.
+    private func save() {
+        viewModel.updateMedicine(medicine, user: session.session?.identifier ?? "")
+        savedMedicine = medicine
     }
 
     private var medicineNameSection: some View {
         LabeledSection(label: "Name") {
-            TextField("Name", text: $medicine.name, onCommit: commitUpdate)
+            TextField("Name", text: $medicine.name)
                 .formFieldStyle()
         }
     }
@@ -60,20 +75,16 @@ extension MedicineDetailView {
     private var medicineStockSection: some View {
         LabeledSection(label: "Stock") {
             HStack {
-                Button(action: {
-                    viewModel.decreaseStock(medicine, user: session.session?.uid ?? "")
-                }) {
+                Button(action: { medicine.stock -= 1 }) {
                     Image(systemName: "minus.circle")
                         .font(.title)
                         .foregroundColor(Color("NegativeColor"))
                 }
-                TextField("Stock", value: $medicine.stock, formatter: NumberFormatter(), onCommit: commitUpdate)
+                TextField("Stock", value: $medicine.stock, formatter: NumberFormatter())
                     .formFieldStyle()
                     .keyboardType(.numberPad)
                     .frame(width: 100)
-                Button(action: {
-                    viewModel.increaseStock(medicine, user: session.session?.uid ?? "")
-                }) {
+                Button(action: { medicine.stock += 1 }) {
                     Image(systemName: "plus.circle")
                         .font(.title)
                         .foregroundColor(Color("PositiveColor"))
@@ -84,18 +95,38 @@ extension MedicineDetailView {
 
     private var medicineAisleSection: some View {
         LabeledSection(label: "Aisle") {
-            TextField("Aisle", text: $medicine.aisle, onCommit: commitUpdate)
+            TextField("Aisle", text: $medicine.aisle)
                 .formFieldStyle()
         }
     }
 
+    private var saveButton: some View {
+        Button(action: save) {
+            Text("Save Changes")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(hasUnsavedChanges ? Color("PositiveColor") : Color("SecondaryText"))
+                .foregroundColor(.white)
+                .cornerRadius(10)
+        }
+        .disabled(!hasUnsavedChanges)
+        .padding(.horizontal)
+    }
+
     private var historySection: some View {
-        VStack(alignment: .leading) {
+        let entries = viewModel.history.filter { $0.medicineId == medicine.id }
+        return VStack(alignment: .leading, spacing: 10) {
             Text("History")
                 .sectionTitleStyle()
                 .padding(.top, 20)
-            ForEach(viewModel.history.filter { $0.medicineId == medicine.id }, id: \.id) { entry in
-                HistoryEntryRow(entry: entry)
+            if entries.isEmpty {
+                Text("No history yet")
+                    .sectionSubtitleStyle()
+            } else {
+                ForEach(entries, id: \.id) { entry in
+                    HistoryEntryRow(entry: entry)
+                }
             }
         }
         .padding(.horizontal)

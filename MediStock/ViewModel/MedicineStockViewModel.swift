@@ -24,6 +24,7 @@ final class MedicineStockViewModel {
     var filteredMedicines: [Medicine] = []
     var medicinesInAisle: [Medicine] = []
     var history: [HistoryEntry] = []
+    var errorMessage: String?
     private let db = Firestore.firestore()
 
     /// Number of documents fetched per page when lazy-loading a list.
@@ -61,7 +62,7 @@ final class MedicineStockViewModel {
         medicinesListener = db.collection("medicines").addSnapshotListener { [weak self] querySnapshot, error in
             guard let self else { return }
             if let error {
-                print("Error getting documents: \(error)")
+                self.errorMessage = error.localizedDescription
                 return
             }
             let documents = querySnapshot?.documents ?? []
@@ -206,9 +207,9 @@ final class MedicineStockViewModel {
     ) {
         self[keyPath: listener]?.remove()
         self[keyPath: listener] = query.limit(to: limit).addSnapshotListener { [weak self] querySnapshot, error in
-            guard self != nil else { return }
+            guard let self else { return }
             if let error {
-                print("Error getting documents: \(error)")
+                self.errorMessage = error.localizedDescription
                 return
             }
             let documents = querySnapshot?.documents ?? []
@@ -229,7 +230,7 @@ final class MedicineStockViewModel {
                     try? document.data(as: HistoryEntry.self)
                 }
             } catch {
-                print("Error getting history: \(error)")
+                self?.errorMessage = error.localizedDescription
             }
         }
     }
@@ -252,12 +253,12 @@ final class MedicineStockViewModel {
     func addRandomMedicine(user: String) {
         let medicine = Medicine(name: "Medicine \(Int.random(in: 1...100))", stock: Int.random(in: 1...100), aisle: "Aisle \(Int.random(in: 1...10))")
         let db = self.db
-        Task {
+        Task { [weak self] in
             do {
                 try db.collection("medicines").document(medicine.id ?? UUID().uuidString).setData(from: medicine)
-                await Self.addHistory(db: db, action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
+                try await Self.addHistory(db: db, action: "Added \(medicine.name)", user: user, medicineId: medicine.id ?? "", details: "Added new medicine")
             } catch {
-                print("Error adding document: \(error)")
+                self?.errorMessage = error.localizedDescription
             }
         }
     }
@@ -265,13 +266,13 @@ final class MedicineStockViewModel {
     func deleteMedicines(at offsets: IndexSet) {
         let medicinesToDelete = offsets.map { medicines[$0] }
         let db = self.db
-        Task {
+        Task { [weak self] in
             for medicine in medicinesToDelete {
                 guard let id = medicine.id else { continue }
                 do {
                     try await db.collection("medicines").document(id).delete()
                 } catch {
-                    print("Error removing document: \(error)")
+                    self?.errorMessage = error.localizedDescription
                 }
             }
         }
@@ -293,10 +294,10 @@ final class MedicineStockViewModel {
             do {
                 try await db.collection("medicines").document(id).updateData(["stock": newStock])
                 self?.applyStockUpdate(id: id, newStock: newStock)
-                await Self.addHistory(db: db, action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
+                try await Self.addHistory(db: db, action: "\(amount > 0 ? "Increased" : "Decreased") stock of \(medicine.name) by \(amount)", user: user, medicineId: id, details: "Stock changed from \(medicine.stock - amount) to \(newStock)")
                 self?.fetchHistory(for: medicine)
             } catch {
-                print("Error updating stock: \(error)")
+                self?.errorMessage = error.localizedDescription
             }
         }
     }
@@ -313,20 +314,16 @@ final class MedicineStockViewModel {
         Task { [weak self] in
             do {
                 try db.collection("medicines").document(id).setData(from: medicine)
-                await Self.addHistory(db: db, action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
+                try await Self.addHistory(db: db, action: "Updated \(medicine.name)", user: user, medicineId: id, details: "Updated medicine details")
                 self?.fetchHistory(for: medicine)
             } catch {
-                print("Error updating document: \(error)")
+                self?.errorMessage = error.localizedDescription
             }
         }
     }
 
-    private static func addHistory(db: Firestore, action: String, user: String, medicineId: String, details: String) async {
+    private static func addHistory(db: Firestore, action: String, user: String, medicineId: String, details: String) async throws {
         let history = HistoryEntry(medicineId: medicineId, user: user, action: action, details: details)
-        do {
-            try db.collection("history").document(history.id ?? UUID().uuidString).setData(from: history)
-        } catch {
-            print("Error adding history: \(error)")
-        }
+        try db.collection("history").document(history.id ?? UUID().uuidString).setData(from: history)
     }
 }

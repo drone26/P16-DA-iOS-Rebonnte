@@ -27,6 +27,7 @@ struct MainTabView: View {
         .onAppear {
             viewModel.fetchMedicines()
         }
+        .errorAlert($viewModel.errorMessage)
     }
 }
 

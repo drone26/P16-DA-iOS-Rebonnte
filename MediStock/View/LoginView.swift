@@ -13,6 +13,7 @@ struct LoginView: View {
     @Environment(SessionStore.self) var session
 
     var body: some View {
+        @Bindable var session = session
         VStack {
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -32,6 +33,7 @@ struct LoginView: View {
             }
         }
         .padding()
+        .errorAlert($session.errorMessage)
     }
 }
 

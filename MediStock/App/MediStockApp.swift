@@ -13,10 +13,21 @@ struct MediStockApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @State private var sessionStore = SessionStore()
 
+    /// True when the process is only hosting a unit-test bundle. In that case the
+    /// real UI (which listens to Firebase Auth on appear) is never built, so tests
+    /// stay fully isolated from the production Firebase project.
+    private var isRunningUnitTests: Bool {
+        NSClassFromString("XCTestCase") != nil
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(sessionStore)
+            if isRunningUnitTests {
+                Color.clear
+            } else {
+                ContentView()
+                    .environment(sessionStore)
+            }
         }
     }
 }

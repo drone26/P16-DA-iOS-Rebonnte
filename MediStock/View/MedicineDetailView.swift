@@ -96,24 +96,24 @@ struct MedicineDetailView: View {
                 }
             }
         }
-        .onAppear {
+        .task {
             if !isNewMedicine {
-                viewModel.fetchHistory(for: medicine)
+                await viewModel.fetchHistory(for: medicine)
             }
         }
     }
 }
 
 extension MedicineDetailView {
-    /// Persists every field at once (name, stock, aisle) as a single Firestore write with a
+    /// Persists every field at once (name, stock, aisle) as a single write with a
     /// single history entry, instead of writing on every keystroke or every +/- tap.
-    private func save() {
+    private func save() async {
         let user = session.session?.identifier ?? ""
         if isNewMedicine {
-            viewModel.addMedicine(medicine, user: user)
+            await viewModel.addMedicine(medicine, user: user)
             dismiss()
         } else {
-            viewModel.updateMedicine(medicine, user: user)
+            await viewModel.updateMedicine(medicine, user: user)
             savedMedicine = medicine
         }
     }
@@ -176,7 +176,7 @@ extension MedicineDetailView {
     }
 
     private var saveButton: some View {
-        Button(action: save) {
+        Button(action: { Task { await save() } }) {
             Text(isNewMedicine ? "Add Medicine" : "Save Changes")
                 .font(.headline)
                 .frame(maxWidth: .infinity)

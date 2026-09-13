@@ -18,7 +18,7 @@ struct MedicineListView: View {
             isLoadingMore: viewModel.isLoadingMoreAisleMedicines,
             onRowAppear: { viewModel.loadMoreAisleMedicinesIfNeeded(currentItem: $0) },
             onDelete: { medicine in
-                viewModel.deleteMedicine(medicine, user: session.session?.identifier ?? "")
+                Task { await viewModel.deleteMedicine(medicine, user: session.session?.identifier ?? "") }
             }
         )
         // See AllMedicinesView: resolving the destination from the pushed value (not a

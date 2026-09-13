@@ -49,7 +49,7 @@ struct LoginView: View {
                     .foregroundColor(Color("NegativeColor"))
             }
             Button(action: {
-                session.signIn(email: email, password: password)
+                Task { await session.signIn(email: email, password: password) }
             }) {
                 Text("Login")
                     .font(.headline)
@@ -63,7 +63,7 @@ struct LoginView: View {
             .padding(.horizontal)
             .padding(.top)
             Button(action: {
-                session.signUp(email: email, password: password)
+                Task { await session.signUp(email: email, password: password) }
             }) {
                 Text("Sign Up")
                     .font(.headline)

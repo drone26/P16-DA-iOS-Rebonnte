@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct AisleListView: View {
-    @ObservedObject var viewModel = MedicineStockViewModel()
+    let viewModel: MedicineStockViewModel
 
     var body: some View {
         NavigationView {
             List {
                 ForEach(viewModel.aisles, id: \.self) { aisle in
-                    NavigationLink(destination: MedicineListView(aisle: aisle)) {
+                    NavigationLink(destination: MedicineListView(aisle: aisle, viewModel: viewModel)) {
                         Text(aisle)
                     }
                 }
@@ -19,14 +19,9 @@ struct AisleListView: View {
                 Image(systemName: "plus")
             })
         }
-        .onAppear {
-            viewModel.fetchAisles()
-        }
     }
 }
 
-struct AisleListView_Previews: PreviewProvider {
-    static var previews: some View {
-        AisleListView()
-    }
+#Preview {
+    AisleListView(viewModel: MedicineStockViewModel())
 }

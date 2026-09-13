@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var session: SessionStore
+    @Environment(SessionStore.self) var session
 
     var body: some View {
         Group {
@@ -17,8 +17,7 @@ struct ContentView: View {
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView().environmentObject(SessionStore())
-    }
+#Preview {
+    ContentView()
+        .environment(SessionStore())
 }

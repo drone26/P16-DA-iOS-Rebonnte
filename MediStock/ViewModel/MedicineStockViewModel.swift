@@ -92,12 +92,12 @@ final class MedicineStockViewModel {
     }
 
     /// Filters and sorts medicines server-side using Firestore query constraints instead
-    /// of loading everything and filtering in Swift. A non-empty filter matches
+    /// of loading everything and filtering/sorting in Swift. A non-empty filter matches
     /// `nameSubstrings` (precomputed substrings of the name, see `Medicine.substrings`)
     /// via `arrayContains`, so it can match text found anywhere in the name, not just a
     /// leading prefix. Combining `arrayContains` with `order(by:)` on a different field
-    /// needs a Firestore composite index, so when a filter is active, sorting is applied
-    /// locally to the already server-filtered (small) result instead.
+    /// needs a Firestore composite index (see `firestore.indexes.json`), which is what
+    /// lets sorting stay server-side even while a filter is active.
     ///
     /// Only the first `pageSize` results are loaded initially; call
     /// `loadMoreFilteredMedicinesIfNeeded(currentItem:)` as the user scrolls to lazily
@@ -127,30 +127,21 @@ final class MedicineStockViewModel {
 
         if !trimmedFilter.isEmpty {
             query = query.whereField("nameSubstrings", arrayContains: trimmedFilter)
-        } else if currentSortOption == .name {
+        }
+        switch currentSortOption {
+        case .name:
             query = query.order(by: "name")
-        } else if currentSortOption == .stock {
+        case .stock:
             query = query.order(by: "stock")
+        case .none:
+            break
         }
 
         listenPaginated(query, limit: filteredMedicinesLimit, listener: \.filteredMedicinesListener) { [weak self] medicines, hasMore in
             guard let self else { return }
             self.isLoadingMoreFilteredMedicines = false
             self.hasMoreFilteredMedicines = hasMore
-
-            var results = medicines
-            if !trimmedFilter.isEmpty {
-                switch self.currentSortOption {
-                case .name:
-                    results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-                case .stock:
-                    results.sort { $0.stock < $1.stock }
-                case .none:
-                    break
-                }
-            }
-
-            self.filteredMedicines = results
+            self.filteredMedicines = medicines
         }
     }
 

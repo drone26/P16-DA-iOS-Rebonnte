@@ -14,10 +14,20 @@ struct AisleListView: View {
         NavigationStack {
             List {
                 ForEach(viewModel.aisles, id: \.self) { aisle in
-                    NavigationLink(destination: MedicineListView(aisle: aisle, viewModel: viewModel)) {
+                    NavigationLink(value: aisle) {
                         Text(aisle)
                     }
                 }
+            }
+            // Using value-based navigation here (instead of the older
+            // NavigationLink(destination:)) keeps this whole stack on a single
+            // navigation style end-to-end. Mixing NavigationLink(destination:) with
+            // .navigationDestination(for:) declared inside the pushed view (as
+            // MedicineListView does for Medicine.self) is a known SwiftUI pitfall that
+            // silently breaks the inner navigationDestination — taps on a medicine did
+            // nothing.
+            .navigationDestination(for: String.self) { aisle in
+                MedicineListView(aisle: aisle, viewModel: viewModel)
             }
             .navigationBarTitle("Aisles")
             .navigationBarItems(trailing: Button(action: {

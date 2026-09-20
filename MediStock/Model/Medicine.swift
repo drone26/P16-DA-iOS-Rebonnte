@@ -9,9 +9,12 @@
 import Foundation
 import FirebaseFirestoreSwift
 
+/// A medicine tracked in the `medicines` Firestore collection.
 struct Medicine: Identifiable, Codable, Equatable, Hashable {
+    /// The Firestore document ID; `nil` until the medicine has been saved.
     @DocumentID var id: String?
     var name: String
+    /// Units in stock; must not be negative (see `MedicineStockViewModel.isValidStock`).
     var stock: Int
     var aisle: String
 
@@ -40,6 +43,8 @@ struct Medicine: Identifiable, Codable, Equatable, Hashable {
         return changes.isEmpty ? "No changes" : changes.joined(separator: "; ")
     }
 
+    /// Compares every field, including `id`, so `MedicineDetailView` can tell whether the
+    /// edited copy differs from the last-saved one.
     static func == (lhs: Medicine, rhs: Medicine) -> Bool {
         return lhs.id == rhs.id &&
                lhs.name == rhs.name &&

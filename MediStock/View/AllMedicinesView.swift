@@ -16,7 +16,7 @@ struct AllMedicinesView: View {
     var body: some View {
         NavigationStack {
             VStack {
-                // Filtrage et Tri
+                // Filtering and sorting
                 HStack {
                     TextField("Filter by name", text: $filterText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -34,7 +34,7 @@ struct AllMedicinesView: View {
                 }
                 .padding(.top, 10)
                 
-                // Liste des Médicaments
+                // Medicine list
                 PaginatedMedicineList(
                     medicines: viewModel.filteredMedicines,
                     isLoadingMore: viewModel.isLoadingMoreFilteredMedicines,

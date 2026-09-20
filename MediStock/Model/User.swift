@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// The signed-in user, reduced to the two Firebase Auth fields the app needs.
 struct User {
     var uid: String
     var email: String?
